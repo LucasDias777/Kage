@@ -1,0 +1,106 @@
+// Cores e dados compartilhados pela janela do Kage.
+// Escuro: azul-acinzentado do Kage. Claro: Windows 11. Com fundo de imagem (diálogo Tema),
+// as superfícies ficam translúcidas por cima do véu.
+
+export struct WallpaperItem {
+    id: string,
+    title: string,
+    kind: string,
+    thumb: image,
+    has-thumb: bool,
+    in-use: bool,
+}
+
+export struct MonitorItem {
+    number: int,
+    label: string,
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    primary: bool,
+    wallpaper-title: string,
+    thumb: image,
+    has-thumb: bool,
+    // A skin aberta no diálogo "Escolha as telas" está ligada neste monitor.
+    marked: bool,
+}
+
+export struct SkinCard {
+    key: string,
+    name: string,
+    suite: string,
+    preview: image,
+    has-preview: bool,
+    // "Tela 1 · Tela 2"; vazio quando desligada.
+    screens: string,
+    active: bool,
+    favorite: bool,
+}
+
+export struct NavCount {
+    label: string,
+    count: int,
+}
+
+export struct BackdropItem {
+    title: string,
+    subtitle: string,
+    thumb: image,
+    has-thumb: bool,
+    removable: bool,
+}
+
+// Notas de uma versão, na tela Novidades.
+export struct ReleaseNote {
+    version: string,
+    date: string,
+    title: string,
+    items: [string],
+}
+
+export struct AppRuleItem {
+    exe: string,
+    action: int,
+}
+
+export global Theme {
+    in-out property <bool> dark: true;
+    in-out property <bool> glass: false;
+    out property <color> solid: dark ? #0e1317 : #f3f3f3;
+    out property <color> base: glass ? transparent : solid;
+    out property <color> veil: dark ? #0e1317c8 : #f3f3f3cc;
+    out property <color> pane: glass ? (dark ? #121a2190 : #eeeeee99) : (dark ? #121a21 : #eeeeee);
+    out property <color> card: glass ? (dark ? #18212ad0 : #fbfbfbd8) : (dark ? #18212a : #fbfbfb);
+    out property <color> card-hover: dark ? #1f2a34 : #f5f5f5;
+    out property <color> selected: dark ? #1e2a36 : #e6ecf3;
+    out property <color> stroke: dark ? #2c3a46 : #e0e0e0;
+    out property <color> text: dark ? #ffffff : #1b1b1b;
+    out property <color> secondary: dark ? #c5cad0 : #5d5d5d;
+    out property <color> muted: dark ? #8b939b : #8a8a8a;
+    out property <color> accent: dark ? #3d6e9e : #005fb8;
+    out property <color> accent-hover: dark ? #4779ab : #1a6fc0;
+    out property <color> accent-text: dark ? #7fb4eb : #005fb8;
+    out property <color> accent-soft: dark ? #26415c : #d6e6f7;
+    out property <color> link: dark ? #6f9dcc : #005fb8;
+    out property <color> danger: dark ? #e86a6a : #c42b1c;
+    out property <color> overlay: dark ? #000000a0 : #00000050;
+    // Controles
+    out property <color> control: dark ? #252f38 : #fbfbfb;
+    out property <color> control-hover: dark ? #2b3640 : #f6f6f6;
+    out property <color> control-pressed: dark ? #212a32 : #f0f0f0;
+    out property <color> control-stroke: dark ? #303c47 : #e5e5e5;
+    out property <color> field-focus: dark ? #10171c : #ffffff;
+    out property <color> field-underline: dark ? #8a949c : #868686;
+    out property <color> track: dark ? #9aa0a6 : #8a8a8a;
+    out property <color> flyout: dark ? #1f2a33 : #f9f9f9;
+    // Item de menu sob o mouse: um pouco mais claro (ou escuro) que o fundo do menu.
+    out property <color> menu-hover: dark ? #2c3a46 : #ebebeb;
+    out property <color> menu-pressed: dark ? #27333e : #e2e2e2;
+    // Diálogos
+    out property <color> dialog: dark ? #1b242c : #f9f9f9;
+    out property <color> dialog-card: dark ? #222c35 : #ffffff;
+    out property <color> dialog-footer: dark ? #141b21 : #f3f3f3;
+    // Fundo das prévias de skin: escuro nos dois temas, como uma área de trabalho.
+    out property <color> preview: #1c1e26;
+}

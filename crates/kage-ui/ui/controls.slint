@@ -1,0 +1,1066 @@
+// Controles da janela do Kage, no visual do WinUI. São próprios porque a Palette do Slint é
+// só leitura e não tem o azul do Kage. Ícones: Lucide (ui/icons).
+
+import { Theme, MonitorItem } from "theme.slint";
+
+// Ícone SVG pintado com a cor do tema; o SVG é redesenhado no tamanho exato, sem borrar.
+export component Icon inherits Image {
+    width: 16px;
+    height: 16px;
+    colorize: Theme.text;
+    image-fit: contain;
+    accessible-role: none;
+}
+
+export component IconButton inherits Rectangle {
+    in property <image> icon;
+    in property <string> tip;
+    in property <bool> active;
+    // Número dentro do ícone (quantos monitores).
+    in property <string> badge;
+    // Pontinho azul no canto: há algo novo atrás do botão (versão nova).
+    in property <bool> dot;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.dot ? tip + " (novidade)" : tip;
+    accessible-action-default => { root.clicked(); }
+    width: 40px;
+    height: 36px;
+    border-radius: 4px;
+    background: active ? Theme.selected : (touch.has-hover ? Theme.card-hover : transparent);
+    Icon {
+        source: root.icon;
+        width: 18px;
+        height: 18px;
+    }
+    if root.badge != "": Text {
+        x: (parent.width - 18px) / 2;
+        y: (parent.height - 18px) / 2 + 1px;
+        width: 18px;
+        height: 12px;
+        text: root.badge;
+        color: Theme.text;
+        font-size: 8px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    if root.dot: Rectangle {
+        x: parent.width - 12px;
+        y: 6px;
+        width: 7px;
+        height: 7px;
+        border-radius: 3.5px;
+        background: Theme.accent-text;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// Minimizar, maximizar e fechar da barra de título própria. Os desenhos são os da fonte
+// Segoe MDL2 Assets, a mesma que o Windows usa nesses botões.
+export component CaptionButton inherits Rectangle {
+    in property <string> glyph;
+    in property <string> tip;
+    in property <bool> close;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.tip;
+    accessible-action-default => { root.clicked(); }
+    width: 46px;
+    background: touch.pressed ? (root.close ? #c42b1ccc : Theme.control-pressed) : (touch.has-hover ? (root.close ? #c42b1c : Theme.card-hover) : transparent);
+    Text {
+        text: root.glyph;
+        font-family: "Segoe MDL2 Assets";
+        font-size: 10px;
+        color: root.close && touch.has-hover ? #ffffff : Theme.text;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component TopTab inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <bool> active;
+    in property <bool> enabled: true;
+    callback clicked;
+    accessible-role: tab;
+    accessible-label: label;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+    width: row.preferred-width + 24px;
+    border-radius: 4px;
+    background: enabled && touch.has-hover && !active ? Theme.card-hover : transparent;
+    row := HorizontalLayout {
+        alignment: center;
+        spacing: 8px;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            Icon {
+                source: root.icon;
+            }
+        }
+        Text {
+            text: label;
+            color: root.enabled ? Theme.text : Theme.muted;
+            font-size: 14px;
+            font-weight: active ? 600 : 400;
+            vertical-alignment: center;
+        }
+    }
+    Rectangle {
+        y: parent.height - 6px;
+        x: (parent.width - self.width) / 2;
+        width: 16px;
+        height: 3px;
+        border-radius: 2px;
+        background: active ? Theme.accent-text : transparent;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Caixa de texto do WinUI: fundo de controle, linha embaixo que fica azul com o foco.
+export component TextBox inherits Rectangle {
+    in property <string> placeholder;
+    in-out property <string> text;
+    in property <image> trailing-icon;
+    in property <InputType> input-type: InputType.text;
+    callback edited(string);
+    callback accepted(string);
+    height: 32px;
+    border-radius: 4px;
+    clip: true;
+    background: input.has-focus ? Theme.field-focus : (touch.has-hover ? Theme.control-hover : Theme.control);
+    border-width: 1px;
+    border-color: Theme.control-stroke;
+    touch := TouchArea {
+        mouse-cursor: MouseCursor.text;
+        clicked => { input.focus(); }
+    }
+    input := TextInput {
+        x: 11px;
+        width: parent.width - 22px - (root.trailing-icon.width > 0 ? 24px : 0px);
+        height: parent.height;
+        vertical-alignment: center;
+        single-line: true;
+        text <=> root.text;
+        input-type: root.input-type;
+        color: Theme.text;
+        font-size: 13px;
+        selection-background-color: Theme.accent;
+        selection-foreground-color: #ffffff;
+        accessible-label: root.placeholder;
+        edited => { root.edited(self.text); }
+        accepted => { root.accepted(self.text); }
+    }
+    if root.text == "": Text {
+        x: 11px;
+        height: parent.height;
+        text: root.placeholder;
+        color: Theme.muted;
+        font-size: 13px;
+        vertical-alignment: center;
+    }
+    if root.trailing-icon.width > 0: Icon {
+        x: parent.width - 28px;
+        y: (parent.height - self.height) / 2;
+        width: 15px;
+        height: 15px;
+        source: root.trailing-icon;
+        colorize: Theme.secondary;
+    }
+    Rectangle {
+        y: parent.height - self.height;
+        height: input.has-focus ? 2px : 1px;
+        background: input.has-focus ? Theme.accent-text : Theme.field-underline;
+    }
+}
+
+export component MenuEntry inherits Rectangle {
+    in property <image> icon;
+    in property <string> text;
+    in property <bool> danger;
+    in property <bool> checked;
+    // Texto curto à direita, como "Nova versão".
+    in property <string> note;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+    height: 36px;
+    border-radius: 4px;
+    background: touch.pressed ? Theme.menu-pressed : (touch.has-hover || root.checked ? Theme.menu-hover : transparent);
+    animate background { duration: 120ms; }
+    Rectangle {
+        x: 0;
+        width: 3px;
+        height: 16px;
+        border-radius: 2px;
+        background: root.checked ? Theme.accent-text : transparent;
+    }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 12px;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            Icon {
+                source: root.icon;
+                colorize: root.danger ? Theme.danger : Theme.text;
+            }
+        }
+        Text {
+            horizontal-stretch: 1;
+            text: root.text;
+            color: root.danger ? Theme.danger : Theme.text;
+            font-size: 14px;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        if root.note != "": VerticalLayout {
+            alignment: center;
+            Rectangle {
+                height: 20px;
+                width: note-text.preferred-width + 14px;
+                border-radius: 10px;
+                background: Theme.accent;
+                note-text := Text {
+                    text: root.note;
+                    color: #ffffff;
+                    font-size: 11px;
+                    font-weight: 600;
+                }
+            }
+        }
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component MenuSeparator inherits Rectangle {
+    height: 1px;
+    background: Theme.stroke;
+}
+
+// Fundo dos menus suspensos.
+export component Flyout inherits Rectangle {
+    background: Theme.flyout;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: Theme.stroke;
+    drop-shadow-blur: 16px;
+    drop-shadow-color: #00000070;
+}
+
+// Lista suspensa do WinUI.
+export component DropDown inherits Rectangle {
+    in property <[string]> model;
+    in-out property <int> current-index;
+    in property <bool> enabled: true;
+    callback selected(int);
+    width: 240px;
+    height: 32px;
+    border-radius: 4px;
+    background: !root.enabled ? Theme.card : (touch.pressed ? Theme.control-pressed : (touch.has-hover ? Theme.control-hover : Theme.control));
+    border-width: 1px;
+    border-color: Theme.control-stroke;
+    accessible-role: combobox;
+    accessible-value: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
+    accessible-expandable: true;
+    accessible-action-default => { if root.enabled { popup.show(); } }
+    accessible-action-expand => { if root.enabled { popup.show(); } }
+    Text {
+        x: 11px;
+        width: parent.width - 44px;
+        height: parent.height;
+        text: root.current-index >= 0 && root.current-index < root.model.length ? root.model[root.current-index] : "";
+        color: root.enabled ? Theme.text : Theme.muted;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    Icon {
+        x: parent.width - 28px;
+        y: (parent.height - self.height) / 2;
+        width: 14px;
+        height: 14px;
+        source: @image-url("icons/chevron-down.svg");
+        colorize: root.enabled ? Theme.secondary : Theme.muted;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { popup.show(); }
+    }
+    popup := PopupWindow {
+        x: 0;
+        y: root.height + 4px;
+        width: root.width;
+        height: root.model.length * 38px + 6px;
+        Flyout { }
+        VerticalLayout {
+            padding: 4px;
+            spacing: 2px;
+            for item[i] in root.model: MenuEntry {
+                text: item;
+                checked: i == root.current-index;
+                // Grava antes de fechar: fechar a lista destrói este item (ele vem de um `for`), e o
+                // que viesse depois do close() não rodava; a escolha se perdia sem erro nenhum.
+                clicked => {
+                    root.current-index = i;
+                    root.selected(i);
+                    popup.close();
+                }
+            }
+        }
+    }
+}
+
+// Interruptor no estilo WinUI: "Ativado" / "Desativado" à esquerda.
+export component ToggleSwitch inherits Rectangle {
+    in-out property <bool> checked;
+    in property <bool> enabled: true;
+    callback toggled(bool);
+    width: row.preferred-width;
+    height: 32px;
+    accessible-role: switch;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-label: root.checked ? "Ativado" : "Desativado";
+    accessible-action-default => {
+        if root.enabled {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+    row := HorizontalLayout {
+        spacing: 12px;
+        Text {
+            text: root.checked ? "Ativado" : "Desativado";
+            color: root.enabled ? Theme.text : Theme.muted;
+            font-size: 14px;
+            vertical-alignment: center;
+        }
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 40px;
+                height: 20px;
+                border-radius: 10px;
+                opacity: root.enabled ? 1 : 0.45;
+                background: root.checked ? (touch.has-hover ? Theme.accent-hover : Theme.accent) : (touch.has-hover ? Theme.control-hover : transparent);
+                border-width: root.checked ? 0px : 1px;
+                border-color: Theme.secondary;
+                Rectangle {
+                    width: touch.pressed ? 14px : 12px;
+                    height: 12px;
+                    border-radius: 6px;
+                    x: root.checked ? parent.width - self.width - 4px : 4px;
+                    y: 4px;
+                    background: root.checked ? #ffffff : Theme.secondary;
+                    animate x { duration: 120ms; easing: ease-out; }
+                }
+            }
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+export component Check inherits Rectangle {
+    in property <string> text;
+    in-out property <bool> checked;
+    callback toggled(bool);
+    height: 32px;
+    accessible-role: checkbox;
+    accessible-checkable: true;
+    accessible-checked: root.checked;
+    accessible-label: root.text;
+    accessible-action-default => {
+        root.checked = !root.checked;
+        root.toggled(root.checked);
+    }
+    HorizontalLayout {
+        spacing: 10px;
+        alignment: start;
+        VerticalLayout {
+            alignment: center;
+            Rectangle {
+                width: 20px;
+                height: 20px;
+                border-radius: 4px;
+                background: root.checked ? (touch.has-hover ? Theme.accent-hover : Theme.accent) : (touch.has-hover ? Theme.control-hover : Theme.control);
+                border-width: root.checked ? 0px : 1px;
+                border-color: Theme.secondary;
+                if root.checked: Icon {
+                    width: 14px;
+                    height: 14px;
+                    source: @image-url("icons/check.svg");
+                    colorize: #ffffff;
+                }
+            }
+        }
+        Text {
+            text: root.text;
+            color: Theme.text;
+            font-size: 14px;
+            vertical-alignment: center;
+        }
+    }
+    touch := TouchArea {
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+// Slider do WinUI: trilho fino, parte preenchida em azul e o botão redondo com miolo azul.
+// O arrasto não grava em `value`: gravar desfaria a ligação com a propriedade de quem usa, e
+// depois "Restaurar padrão" mudava o número sem mover o controle. Quem usa recebe `released` e
+// devolve o valor novo; durante o arrasto, `shown` traz o valor da posição do mouse.
+export component RangeSlider inherits Rectangle {
+    in property <float> minimum: 0;
+    in property <float> maximum: 100;
+    in property <float> value;
+    in property <bool> enabled: true;
+    out property <float> shown: touch.pressed ? root.dragging : root.value;
+    callback released(float);
+    private property <float> dragging;
+    width: 240px;
+    height: 32px;
+    accessible-role: slider;
+    accessible-value: Math.round(root.shown);
+    accessible-value-minimum: root.minimum;
+    accessible-value-maximum: root.maximum;
+    property <float> ratio: Math.max(0, Math.min(1, (root.shown - root.minimum) / Math.max(1, root.maximum - root.minimum)));
+    Rectangle {
+        x: 10px;
+        y: (parent.height - self.height) / 2;
+        width: parent.width - 20px;
+        height: 4px;
+        border-radius: 2px;
+        background: Theme.track;
+        opacity: root.enabled ? 1 : 0.4;
+    }
+    Rectangle {
+        x: 10px;
+        y: (parent.height - self.height) / 2;
+        width: (parent.width - 20px) * root.ratio;
+        height: 4px;
+        border-radius: 2px;
+        background: root.enabled ? Theme.accent-text : Theme.muted;
+    }
+    Rectangle {
+        x: (parent.width - 20px) * root.ratio;
+        y: (parent.height - self.height) / 2;
+        width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        background: Theme.control;
+        border-width: 1px;
+        border-color: Theme.control-stroke;
+        Rectangle {
+            width: touch.pressed ? 10px : (touch.has-hover ? 14px : 12px);
+            height: self.width;
+            border-radius: self.width / 2;
+            background: root.enabled ? Theme.accent-text : Theme.muted;
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                root.dragging = Math.max(root.minimum, Math.min(root.maximum, root.minimum + (self.mouse-x - 10px) / (root.width - 20px) * (root.maximum - root.minimum)));
+            }
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                root.released(root.dragging);
+            }
+        }
+        moved => {
+            if self.pressed {
+                root.dragging = Math.max(root.minimum, Math.min(root.maximum, root.minimum + (self.mouse-x - 10px) / (root.width - 20px) * (root.maximum - root.minimum)));
+            }
+        }
+    }
+}
+
+// Pausar / continuar, dois botões com ícone.
+export component PausePlay inherits HorizontalLayout {
+    in-out property <int> selected;
+    callback changed(int);
+    spacing: 0px;
+    for icon[i] in [@image-url("icons/pause.svg"), @image-url("icons/play.svg")]: Rectangle {
+        accessible-role: button;
+        accessible-label: i == 0 ? "Pausar" : "Continuar";
+        accessible-action-default => {
+            root.selected = i;
+            root.changed(i);
+        }
+        width: 38px;
+        height: 32px;
+        border-radius: 4px;
+        background: i == root.selected ? (touch.has-hover ? Theme.accent-hover : Theme.accent) : (touch.has-hover ? Theme.control-hover : Theme.control);
+        Icon {
+            width: 15px;
+            height: 15px;
+            source: icon;
+            colorize: i == root.selected ? #ffffff : Theme.text;
+        }
+        touch := TouchArea {
+            clicked => {
+                root.selected = i;
+                root.changed(i);
+            }
+        }
+    }
+}
+
+export component Segmented inherits Rectangle {
+    in property <[string]> options;
+    in-out property <int> selected;
+    callback changed(int);
+    height: 32px;
+    border-radius: 4px;
+    background: Theme.control;
+    border-width: 1px;
+    border-color: Theme.control-stroke;
+    HorizontalLayout {
+        padding: 2px;
+        spacing: 2px;
+        for option[i] in root.options: Rectangle {
+            accessible-role: button;
+            accessible-label: option;
+            accessible-action-default => {
+                root.selected = i;
+                root.changed(i);
+            }
+            border-radius: 3px;
+            background: i == root.selected ? Theme.control-hover : (touch.has-hover ? Theme.control-pressed : transparent);
+            Text {
+                text: option;
+                color: Theme.text;
+                font-size: 14px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+            Rectangle {
+                y: parent.height - 3px;
+                x: (parent.width - self.width) / 2;
+                width: 14px;
+                height: 2px;
+                border-radius: 1px;
+                background: i == root.selected ? Theme.accent-text : transparent;
+            }
+            touch := TouchArea {
+                clicked => {
+                    root.selected = i;
+                    root.changed(i);
+                }
+            }
+        }
+    }
+}
+
+export component PrimaryButton inherits Rectangle {
+    in property <string> text;
+    in property <bool> enabled: true;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+    height: 32px;
+    min-width: label.preferred-width + 32px;
+    border-radius: 4px;
+    background: !root.enabled ? Theme.control : (touch.has-hover ? Theme.accent-hover : Theme.accent);
+    label := Text {
+        text: root.text;
+        color: root.enabled ? #ffffff : Theme.muted;
+        font-size: 14px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+export component SecondaryButton inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> danger;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-action-default => { root.clicked(); }
+    height: 32px;
+    min-width: row.preferred-width + 28px;
+    border-radius: 4px;
+    background: touch.pressed ? Theme.control-pressed : (touch.has-hover ? Theme.control-hover : Theme.control);
+    border-width: 1px;
+    border-color: danger && touch.has-hover ? Theme.danger : Theme.control-stroke;
+    row := HorizontalLayout {
+        alignment: center;
+        spacing: 8px;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            Icon {
+                width: 14px;
+                height: 14px;
+                source: root.icon;
+                colorize: root.danger ? Theme.danger : Theme.text;
+            }
+        }
+        Text {
+            text: root.text;
+            color: danger ? Theme.danger : Theme.text;
+            font-size: 14px;
+            vertical-alignment: center;
+        }
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component SoonBadge inherits Rectangle {
+    width: label.preferred-width + 14px;
+    height: 20px;
+    border-radius: 10px;
+    background: Theme.control;
+    border-width: 1px;
+    border-color: Theme.control-stroke;
+    label := Text {
+        text: "Em breve";
+        color: Theme.muted;
+        font-size: 11px;
+    }
+}
+
+export component SectionHeader inherits Text {
+    color: Theme.text;
+    font-size: 14px;
+    font-weight: 600;
+    height: 46px;
+    vertical-alignment: center;
+}
+
+// Cartão de configuração (o SettingsCard do WinUI).
+export component SettingsCard inherits Rectangle {
+    in property <image> icon;
+    in property <string> title;
+    in property <string> description;
+    in property <bool> soon;
+    in property <bool> indent;
+    min-height: 68px;
+    background: Theme.card;
+    border-width: 1px;
+    border-color: Theme.stroke;
+    border-radius: 4px;
+    HorizontalLayout {
+        padding-left: root.indent ? 58px : 18px;
+        padding-right: 16px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        spacing: 18px;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            Icon {
+                width: 20px;
+                height: 20px;
+                source: root.icon;
+                colorize: root.soon ? Theme.muted : Theme.text;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 1px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 10px;
+                Text {
+                    text: root.title;
+                    color: root.soon ? Theme.secondary : Theme.text;
+                    font-size: 14px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                if root.soon: VerticalLayout {
+                    alignment: center;
+                    SoonBadge { }
+                }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            if root.description != "": Text {
+                text: root.description;
+                color: Theme.secondary;
+                font-size: 12px;
+                wrap: word-wrap;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            HorizontalLayout {
+                alignment: end;
+                spacing: 8px;
+                @children
+            }
+        }
+    }
+}
+
+export component ChevronButton inherits Rectangle {
+    in property <image> icon: @image-url("icons/chevron-right.svg");
+    in property <string> tip;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: tip;
+    accessible-action-default => { root.clicked(); }
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    background: touch.has-hover ? Theme.card-hover : transparent;
+    Icon {
+        source: root.icon;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component NavItem inherits Rectangle {
+    in property <image> icon;
+    in property <string> label;
+    in property <string> count;
+    in property <bool> active;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: label;
+    accessible-action-default => { root.clicked(); }
+    height: 40px;
+    border-radius: 4px;
+    background: active ? Theme.selected : (touch.has-hover ? Theme.card-hover : transparent);
+    Rectangle {
+        x: 0;
+        width: 3px;
+        height: 16px;
+        border-radius: 2px;
+        background: active ? Theme.accent-text : transparent;
+    }
+    HorizontalLayout {
+        padding-left: 12px;
+        padding-right: 10px;
+        spacing: 12px;
+        if root.icon.width > 0: VerticalLayout {
+            alignment: center;
+            Icon {
+                source: root.icon;
+            }
+        }
+        Text {
+            text: root.label;
+            color: Theme.text;
+            font-size: 14px;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+        Text {
+            text: root.count;
+            color: Theme.secondary;
+            vertical-alignment: center;
+        }
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+// Botão de opções no canto do card.
+export component CardButton inherits Rectangle {
+    in property <string> tip;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: root.tip;
+    accessible-action-default => { root.clicked(); }
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    background: touch.has-hover ? #000000d0 : #00000090;
+    border-width: 1px;
+    border-color: #ffffffb0;
+    Icon {
+        width: 17px;
+        height: 17px;
+        source: @image-url("icons/sliders-vertical.svg");
+        colorize: #ffffff;
+    }
+    touch := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component Badge inherits Rectangle {
+    in property <string> text;
+    in property <bool> strong;
+    width: label.preferred-width + 14px;
+    height: 20px;
+    border-radius: 4px;
+    background: root.strong ? Theme.accent : #00000090;
+    border-width: root.strong ? 0px : 1px;
+    border-color: #ffffff50;
+    label := Text {
+        text: root.text;
+        color: #ffffffe0;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.6px;
+    }
+}
+
+export component MonitorMap inherits Rectangle {
+    in property <[MonitorItem]> monitors;
+    in property <float> map-x;
+    in property <float> map-y;
+    in property <float> map-w: 1;
+    in property <float> map-h: 1;
+    in property <int> selected;
+    in property <bool> show-selection;
+    callback select(int);
+    property <float> scale: Math.min(self.width / 1px / root.map-w, self.height / 1px / root.map-h) * 0.82;
+    property <length> offset-x: (self.width - root.map-w * self.scale * 1px) / 2;
+    property <length> offset-y: (self.height - root.map-h * self.scale * 1px) / 2;
+    for m[i] in root.monitors: Rectangle {
+        accessible-role: button;
+        accessible-label: m.label + ": " + m.wallpaper-title;
+        accessible-action-default => { root.select(i); }
+        x: root.offset-x + (m.x - root.map-x) * root.scale * 1px + 1px;
+        y: root.offset-y + (m.y - root.map-y) * root.scale * 1px + 1px;
+        width: m.w * root.scale * 1px - 2px;
+        height: m.h * root.scale * 1px - 2px;
+        border-radius: 4px;
+        clip: true;
+        background: Theme.dialog-card;
+        if m.has-thumb: Image {
+            width: parent.width;
+            height: parent.height;
+            source: m.thumb;
+            image-fit: cover;
+        }
+        Text {
+            x: 6px;
+            y: 2px;
+            text: m.number;
+            color: #ffffff;
+            font-size: 18px;
+        }
+        if m.primary: Icon {
+            x: parent.width - 20px;
+            y: parent.height - 20px;
+            width: 13px;
+            height: 13px;
+            source: @image-url("icons/house.svg");
+            colorize: #ffffffd0;
+        }
+        if m.marked: Rectangle {
+            x: parent.width - 30px;
+            y: 6px;
+            width: 24px;
+            height: 24px;
+            border-radius: 12px;
+            background: Theme.accent;
+            Icon {
+                width: 14px;
+                height: 14px;
+                source: @image-url("icons/check.svg");
+                colorize: #ffffff;
+            }
+        }
+        Rectangle {
+            border-radius: 4px;
+            border-width: m.marked || (i == root.selected && root.show-selection) || hover.has-hover ? 2px : 1px;
+            border-color: m.marked || (i == root.selected && root.show-selection) || hover.has-hover ? Theme.accent-text : #ffffff50;
+            background: hover.has-hover ? #ffffff14 : transparent;
+        }
+        hover := TouchArea {
+            clicked => { root.select(i); }
+        }
+    }
+}
+
+// Borda tracejada da área de "arrastar e soltar".
+export component DashedBox inherits Rectangle {
+    property <length> dash: 7px;
+    property <length> gap: 5px;
+    property <int> across: Math.floor(self.width / (self.dash + self.gap));
+    property <int> down: Math.floor(self.height / (self.dash + self.gap));
+    for i in self.across: Rectangle {
+        x: i * (root.dash + root.gap);
+        y: 0;
+        width: root.dash;
+        height: 2px;
+        background: Theme.secondary;
+    }
+    for i in self.across: Rectangle {
+        x: i * (root.dash + root.gap);
+        y: root.height - 2px;
+        width: root.dash;
+        height: 2px;
+        background: Theme.secondary;
+    }
+    for i in self.down: Rectangle {
+        x: 0;
+        y: i * (root.dash + root.gap);
+        width: 2px;
+        height: root.dash;
+        background: Theme.secondary;
+    }
+    for i in self.down: Rectangle {
+        x: root.width - 2px;
+        y: i * (root.dash + root.gap);
+        width: 2px;
+        height: root.dash;
+        background: Theme.secondary;
+    }
+    @children
+}
+
+export component ActionRow inherits Rectangle {
+    in property <image> icon;
+    in property <string> title;
+    in property <string> subtitle;
+    in property <bool> enabled: true;
+    callback clicked;
+    accessible-role: button;
+    accessible-label: title;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+    height: 66px;
+    border-radius: 4px;
+    background: enabled && touch.has-hover ? Theme.control-hover : Theme.dialog-card;
+    HorizontalLayout {
+        padding-left: 18px;
+        padding-right: 18px;
+        spacing: 18px;
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                width: 20px;
+                height: 20px;
+                source: root.icon;
+                colorize: enabled ? Theme.text : Theme.muted;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            spacing: 1px;
+            horizontal-stretch: 1;
+            HorizontalLayout {
+                spacing: 10px;
+                Text {
+                    text: title;
+                    color: enabled ? Theme.text : Theme.secondary;
+                    font-size: 14px;
+                }
+                if !enabled: SoonBadge { }
+                Rectangle { horizontal-stretch: 1; }
+            }
+            Text {
+                text: subtitle;
+                color: Theme.secondary;
+                font-size: 12px;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            Icon {
+                width: 14px;
+                height: 14px;
+                source: @image-url("icons/chevron-right.svg");
+                colorize: enabled ? Theme.text : Theme.muted;
+            }
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}
+
+// Diálogo: título, conteúdo e o rodapé de largura total com os botões.
+export component Dialog inherits Rectangle {
+    in property <string> title;
+    in property <length> dialog-width: 560px;
+    in property <string> primary-text;
+    in property <bool> primary-enabled: true;
+    in property <string> secondary-text;
+    callback primary();
+    callback secondary();
+    width: self.dialog-width;
+    border-radius: 8px;
+    background: Theme.dialog;
+    border-width: 1px;
+    border-color: Theme.stroke;
+    drop-shadow-blur: 32px;
+    drop-shadow-color: #00000080;
+    clip: true;
+    // Engole o clique para ele não chegar ao fundo escuro, que fecha o diálogo.
+    TouchArea { }
+    VerticalLayout {
+        VerticalLayout {
+            padding: 24px;
+            padding-top: 20px;
+            spacing: 14px;
+            Text {
+                text: root.title;
+                color: Theme.text;
+                font-size: 20px;
+                font-weight: 600;
+            }
+            @children
+        }
+        Rectangle {
+            height: 1px;
+            background: Theme.stroke;
+        }
+        Rectangle {
+            height: 78px;
+            background: Theme.dialog-footer;
+            HorizontalLayout {
+                padding-left: 24px;
+                padding-right: 24px;
+                alignment: end;
+                spacing: 8px;
+                if root.secondary-text != "": VerticalLayout {
+                    alignment: center;
+                    SecondaryButton {
+                        width: 200px;
+                        text: root.secondary-text;
+                        clicked => { root.secondary(); }
+                    }
+                }
+                if root.primary-text != "": VerticalLayout {
+                    alignment: center;
+                    PrimaryButton {
+                        width: 200px;
+                        text: root.primary-text;
+                        enabled: root.primary-enabled;
+                        clicked => { root.primary(); }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,46 @@
+[package]
+name = "kage-ui"
+version.workspace = true
+edition.workspace = true
+description = "Janela do Kage: biblioteca, monitores, skins e configurações"
+build = "build.rs"
+
+[[bin]]
+name = "kage"
+path = "src/main.rs"
+
+[dependencies]
+kage-core = { path = "../kage-core" }
+kage-skins = { path = "../kage-skins" }
+# Só o renderizador por software: sem OpenGL, a janela não carrega o driver de vídeo
+# (31 MB de RAM em vez de ~156 MB). Para uma tela de configuração, sobra.
+# unstable-winit-030: acesso à janela do winit para pintar a barra de título com o tema.
+slint = { version = "1.18", default-features = false, features = ["std", "compat-1-2", "backend-winit", "renderer-software", "accessibility", "unstable-winit-030"] }
+rfd = "0.18"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+windows-core = "0.62"
+windows-future = "0.3"
+
+[dependencies.windows]
+version = "0.62"
+features = [
+    "Foundation",
+    "Security_Cryptography",
+    "Security_Cryptography_Core",
+    "Storage_Streams",
+    "Web_Http",
+    "Web_Http_Headers",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Shell",
+    "Win32_System_Registry",
+    "Win32_System_SystemInformation",
+]
+
+[build-dependencies]
+slint-build = "1.18"
+winresource = "0.1"

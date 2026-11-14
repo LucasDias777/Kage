@@ -1,0 +1,8 @@
+[package]
+name = "kage-skins"
+version.workspace = true
+edition.workspace = true
+description = "Leitura e avaliação de skins do Rainmeter; produz a lista do que desenhar"
+
+[dependencies]
+regex = "1"

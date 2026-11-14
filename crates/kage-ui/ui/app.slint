@@ -1,0 +1,2458 @@
+// Janela do Kage: abas no topo, ações à direita, filtros à esquerda, configurações em cartões e diálogos sobrepostos.
+// A lógica fica em src/main.rs.
+
+import { Palette } from "std-widgets.slint";
+import { Theme, WallpaperItem, MonitorItem, SkinCard, NavCount, BackdropItem, AppRuleItem, ReleaseNote } from "theme.slint";
+import {
+    Icon, IconButton, CaptionButton, TopTab, TextBox, MenuEntry, MenuSeparator, Flyout, DropDown, ToggleSwitch, Check,
+    RangeSlider, PausePlay, Segmented, PrimaryButton, SecondaryButton, SoonBadge, SectionHeader, SettingsCard,
+    ChevronButton, NavItem, CardButton, Badge, MonitorMap, DashedBox, ActionRow, Dialog,
+} from "controls.slint";
+
+export { Theme, WallpaperItem, MonitorItem, SkinCard, NavCount, BackdropItem, AppRuleItem, ReleaseNote }
+
+component WallpaperCard inherits Rectangle {
+    in property <WallpaperItem> item;
+    callback apply();
+    callback about();
+    callback preview();
+    callback customize();
+    callback reveal();
+    callback share();
+    callback remove();
+    callback edit();
+    accessible-role: button;
+    accessible-label: "Aplicar " + item.title;
+    accessible-action-default => { root.apply(); }
+    width: 270px;
+    height: 196px;
+    Rectangle {
+        width: parent.width;
+        height: 152px;
+        y: 0;
+        border-radius: 4px;
+        clip: true;
+        background: Theme.card;
+        if item.has-thumb: Image {
+            width: parent.width;
+            height: parent.height;
+            source: item.thumb;
+            image-fit: cover;
+        }
+        if !item.has-thumb: Text {
+            text: "Gerando miniatura…";
+            color: Theme.muted;
+        }
+        Badge {
+            x: 10px;
+            y: 10px;
+            text: item.kind;
+        }
+        // Wallpaper em uso: a barra azul embaixo.
+        if item.in-use: Rectangle {
+            y: parent.height - 3px;
+            height: 3px;
+            background: Theme.accent-text;
+        }
+        Rectangle {
+            border-radius: 4px;
+            background: touch.has-hover ? #ffffff10 : transparent;
+        }
+    }
+    Text {
+        y: 162px;
+        width: parent.width;
+        text: item.title;
+        color: Theme.text;
+        font-size: 14px;
+        font-weight: 600;
+        overflow: elide;
+    }
+    touch := TouchArea {
+        clicked => { menu.close(); root.apply(); }
+    }
+    CardButton {
+        x: parent.width - 42px;
+        y: 152px - 42px;
+        tip: "Opções de " + item.title;
+        clicked => { menu.show(); }
+    }
+    menu := PopupWindow {
+        x: parent.width - 250px;
+        y: 152px - 4px;
+        width: 250px;
+        height: 8 * 36px + 9 * 2px + 1px + 8px;
+        Flyout { }
+        VerticalLayout {
+            padding: 4px;
+            spacing: 2px;
+            MenuEntry {
+                icon: @image-url("icons/info.svg");
+                text: "Sobre";
+                clicked => { menu.close(); root.about(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/monitor-check.svg");
+                text: "Definir como wallpaper";
+                clicked => { menu.close(); root.apply(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/eye.svg");
+                text: "Visualização do wallpaper";
+                clicked => { menu.close(); root.preview(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/sliders-vertical.svg");
+                text: "Customizar";
+                clicked => { menu.close(); root.customize(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/folder.svg");
+                text: "Mostrar na pasta";
+                clicked => { menu.close(); root.reveal(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/share.svg");
+                text: "Compartilhar";
+                clicked => { menu.close(); root.share(); }
+            }
+            MenuSeparator { }
+            MenuEntry {
+                icon: @image-url("icons/trash.svg");
+                text: "Excluir da biblioteca";
+                danger: true;
+                clicked => { menu.close(); root.remove(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/pencil.svg");
+                text: "Editar";
+                clicked => { menu.close(); root.edit(); }
+            }
+        }
+    }
+}
+
+component SkinCardView inherits Rectangle {
+    in property <SkinCard> item;
+    callback open();
+    callback settings();
+    callback edit();
+    callback folder();
+    callback favorite();
+    callback off();
+    callback hide();
+    accessible-role: button;
+    accessible-label: "Escolher as telas de " + item.name;
+    accessible-action-default => { root.open(); }
+    width: 270px;
+    height: 196px;
+    Rectangle {
+        width: parent.width;
+        height: 152px;
+        y: 0;
+        border-radius: 4px;
+        clip: true;
+        background: Theme.preview;
+        if item.has-preview: Image {
+            x: 12px;
+            y: 30px;
+            width: parent.width - 24px;
+            height: parent.height - 60px;
+            source: item.preview;
+            image-fit: contain;
+        }
+        if !item.has-preview: Text {
+            text: "Gerando prévia…";
+            color: #8b939b;
+        }
+        Badge {
+            x: 10px;
+            y: 10px;
+            text: item.suite;
+        }
+        if item.favorite: Icon {
+            x: parent.width - 28px;
+            y: 12px;
+            width: 16px;
+            height: 16px;
+            source: @image-url("icons/star.svg");
+            colorize: #f5c451;
+        }
+        if item.active: Badge {
+            x: 10px;
+            y: parent.height - 32px;
+            text: item.screens;
+            strong: true;
+        }
+        if item.active: Rectangle {
+            y: parent.height - 3px;
+            height: 3px;
+            background: Theme.accent-text;
+        }
+        Rectangle {
+            border-radius: 4px;
+            background: touch.has-hover ? #ffffff10 : transparent;
+        }
+    }
+    Text {
+        y: 162px;
+        width: parent.width;
+        text: item.name;
+        color: Theme.text;
+        font-size: 14px;
+        font-weight: 600;
+        overflow: elide;
+    }
+    touch := TouchArea {
+        clicked => { menu.close(); root.open(); }
+    }
+    CardButton {
+        x: parent.width - 42px;
+        y: 152px - 42px;
+        tip: "Opções de " + item.name;
+        clicked => { menu.show(); }
+    }
+    menu := PopupWindow {
+        x: parent.width - 250px;
+        y: 152px - 4px;
+        width: 250px;
+        height: 7 * 36px + 8 * 2px + 1px + 8px;
+        Flyout { }
+        VerticalLayout {
+            padding: 4px;
+            spacing: 2px;
+            MenuEntry {
+                icon: @image-url("icons/monitor.svg");
+                text: "Escolher telas";
+                clicked => { menu.close(); root.open(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/settings.svg");
+                text: "Configurar a skin";
+                clicked => { menu.close(); root.settings(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/pencil.svg");
+                text: "Editar skin";
+                clicked => { menu.close(); root.edit(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/folder.svg");
+                text: "Abrir pasta";
+                clicked => { menu.close(); root.folder(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/star.svg");
+                text: item.favorite ? "Tirar dos favoritos" : "Favoritar";
+                clicked => { menu.close(); root.favorite(); }
+            }
+            MenuEntry {
+                icon: @image-url("icons/eye-off.svg");
+                text: "Remover da lista";
+                clicked => { menu.close(); root.hide(); }
+            }
+            MenuSeparator { }
+            MenuEntry {
+                icon: @image-url("icons/power.svg");
+                text: "Desligar em todas as telas";
+                danger: true;
+                clicked => { menu.close(); root.off(); }
+            }
+        }
+    }
+}
+
+component BackdropRow inherits Rectangle {
+    in property <BackdropItem> item;
+    in property <bool> chosen;
+    in property <bool> solid;
+    callback choose();
+    callback remove();
+    accessible-role: button;
+    accessible-label: item.title;
+    accessible-action-default => { root.choose(); }
+    height: 62px;
+    border-radius: 4px;
+    background: root.chosen ? Theme.accent-soft : (touch.has-hover ? Theme.control-hover : Theme.dialog-card);
+    touch := TouchArea {
+        clicked => { root.choose(); }
+    }
+    HorizontalLayout {
+        padding: 6px;
+        padding-right: 12px;
+        spacing: 14px;
+        Rectangle {
+            width: 90px;
+            border-radius: 3px;
+            clip: true;
+            background: root.solid ? Theme.solid : Theme.preview;
+            border-width: 1px;
+            border-color: Theme.stroke;
+            if item.has-thumb: Image {
+                width: parent.width;
+                height: parent.height;
+                source: item.thumb;
+                image-fit: cover;
+            }
+        }
+        VerticalLayout {
+            alignment: center;
+            horizontal-stretch: 1;
+            Text {
+                text: item.title;
+                color: Theme.text;
+                font-size: 14px;
+                font-weight: 600;
+            }
+            Text {
+                text: item.subtitle;
+                color: Theme.secondary;
+                font-size: 12px;
+                overflow: elide;
+            }
+        }
+        if item.removable: VerticalLayout {
+            alignment: center;
+            ChevronButton {
+                icon: @image-url("icons/trash.svg");
+                tip: "Tirar " + item.title;
+                clicked => { root.remove(); }
+            }
+        }
+    }
+}
+
+export component App inherits Window {
+    title: "Kage";
+    icon: @image-url("../../../assets/brand/kage-icon-256.png");
+    preferred-width: 1400px;
+    preferred-height: 900px;
+    min-width: 1040px;
+    min-height: 660px;
+    background: Theme.solid;
+    default-font-family: "Segoe UI";
+    default-font-size: 13px;
+    // Sem a barra de título do Windows: o Kage desenha a dele, na mesma cor da janela.
+    no-frame: true;
+
+    in property <bool> is-maximized;
+    in property <string> version;
+    in-out property <string> search-text;
+    // "Ver tudo" da biblioteca: volta a "Todos os wallpapers" e limpa a busca.
+    function show-all() {
+        root.search-text = "";
+        root.search-changed("");
+        root.set-filter(0);
+    }
+    callback open-color-settings();
+    callback drag-window();
+    callback minimize-window();
+    callback toggle-maximize();
+    callback close-window();
+    callback resize-window(int);
+
+    in property <bool> dark: true;
+    changed dark => {
+        Theme.dark = self.dark;
+        Palette.color-scheme = self.dark ? ColorScheme.dark : ColorScheme.light;
+    }
+    in property <bool> has-backdrop;
+    in property <image> backdrop-image;
+    changed has-backdrop => { Theme.glass = self.has-backdrop; }
+    init => {
+        Theme.dark = self.dark;
+        Theme.glass = self.has-backdrop;
+        Palette.color-scheme = self.dark ? ColorScheme.dark : ColorScheme.light;
+    }
+
+    in-out property <int> tab: 0;
+    in-out property <bool> settings-open: false;
+    in-out property <int> settings-tab: 0;
+    in-out property <int> dialog: 0;
+    in-out property <bool> rules-expanded: false;
+    in-out property <bool> folder-expanded: false;
+
+    // Biblioteca
+    in property <[WallpaperItem]> wallpapers;
+    in-out property <int> filter: 0;
+    in property <int> count-all;
+    in property <int> count-video;
+    in property <int> count-image;
+    in property <int> count-gif;
+    in property <string> target-label;
+    in property <string> pending-title;
+    in-out property <bool> ask-monitor: true;
+
+    // Monitores
+    in property <[MonitorItem]> monitors;
+    in property <[string]> monitor-labels;
+    in property <float> map-x;
+    in property <float> map-y;
+    in property <float> map-w: 1;
+    in property <float> map-h: 1;
+    in-out property <int> selected-monitor;
+    in-out property <int> arrangement;
+    in-out property <int> fit;
+
+    // Sobre, Customizar e Editar (wallpaper do menu)
+    in property <string> about-title;
+    in property <string> about-kind;
+    in property <string> about-size;
+    in property <string> about-path;
+    in property <image> about-thumb;
+    in property <bool> about-has-thumb;
+    in-out property <float> look-speed: 100;
+    in-out property <float> look-brightness: 100;
+    in-out property <float> look-contrast: 100;
+    in-out property <float> look-saturation: 100;
+    in property <bool> look-moves;
+    in-out property <string> edit-title;
+
+    // Desempenho
+    in-out property <int> fullscreen-rule;
+    in-out property <int> focus-rule;
+    in-out property <int> battery-rule;
+    in-out property <int> saver-rule;
+    in-out property <int> remote-rule;
+    in-out property <int> scope;
+    in-out property <int> release-index;
+    in property <[AppRuleItem]> app-rules;
+
+    // Skins
+    in-out property <bool> skins-enabled;
+    in property <[SkinCard]> skin-cards;
+    in-out property <int> skin-filter;
+    in property <[NavCount]> skin-filters;
+    in property <int> active-skins;
+    in property <int> max-skins: 3;
+    in property <int> hidden-skins;
+    callback show-hidden-skins();
+    in-out property <bool> skin-detail-open;
+    in property <string> skin-name;
+    in property <string> skin-suite;
+    in property <image> skin-preview;
+    in property <bool> skin-has-preview;
+    in property <[string]> skin-instances;
+    in-out property <int> skin-instance;
+    in-out property <int> s-anchor;
+    in-out property <int> s-monitor;
+    in-out property <float> s-height: 50;
+    in property <string> s-x;
+    in property <string> s-y;
+    in property <[string]> s-variants;
+    in-out property <int> s-variant;
+    in-out property <int> s-alpha;
+    in-out property <int> s-layer;
+    in-out property <int> s-hover;
+    in-out property <bool> s-click;
+    in-out property <bool> s-drag;
+    in-out property <bool> s-keep;
+    in-out property <bool> s-snap;
+    in-out property <bool> s-save;
+
+    // Geral e sistema
+    in-out property <int> theme-choice;
+    in property <[BackdropItem]> backdrops;
+    in-out property <int> backdrop-choice;
+    in-out property <bool> start-with-windows;
+    in property <bool> engine-running;
+    in property <string> engine-detail;
+    in property <string> data-path;
+    in property <string> toast;
+
+    callback pick-wallpaper(string);
+    callback apply-to-monitor(int);
+    callback apply-to-all(int);
+    callback set-ask-monitor(bool);
+    callback remove-wallpaper(string);
+    callback reveal-wallpaper(string);
+    callback about-wallpaper(string);
+    callback preview-wallpaper(string);
+    callback customize-wallpaper(string);
+    callback share-wallpaper(string);
+    callback edit-wallpaper(string);
+    callback rename-wallpaper(string);
+    callback set-look(string, float);
+    callback reset-look();
+    callback add-files();
+    callback add-folder();
+    callback set-filter(int);
+    callback search-changed(string);
+    callback select-monitor(int);
+    callback set-arrangement(int);
+    callback set-fit(int);
+    callback clear-wallpapers();
+    callback set-rule(string, int);
+    callback set-release(int);
+    callback add-app-rule(string, int);
+    callback remove-app-rule(int);
+    callback toggle-skins(bool);
+    callback set-skin-filter(int);
+    callback open-skin(string);
+    callback open-skin-settings(string);
+    callback skin-action(string, string);
+    callback toggle-skin-screen(int);
+    callback select-skin-instance(int);
+    callback set-skin-option(string, int);
+    callback set-skin-height(float);
+    callback set-skin-xy(string, string);
+    callback set-theme(int);
+    callback set-backdrop(int);
+    callback add-backdrop();
+    callback remove-backdrop(int);
+    callback set-start-with-windows(bool);
+    callback start-engine();
+    callback stop-engine();
+    callback open-data-folder();
+    callback open-log();
+    callback refresh-library();
+
+    // Atualização pelo GitHub. Estados: 0 ainda não procurou, 1 procurando, 2 em dia,
+    // 3 versão nova, 4 baixando, 5 instalando, 6 erro.
+    in property <int> update-state;
+    in property <string> update-version;
+    in property <string> update-notes;
+    in property <float> update-progress;
+    in property <string> update-detail;
+    in-out property <bool> check-updates: true;
+    in property <[ReleaseNote]> release-notes;
+    callback check-update();
+    callback apply-update();
+    callback set-check-updates(bool);
+    callback open-releases();
+
+    // Fundo do diálogo Tema: imagem e véu por baixo de tudo.
+    if root.has-backdrop: Image {
+        width: parent.width;
+        height: parent.height;
+        source: root.backdrop-image;
+        image-fit: cover;
+    }
+    if root.has-backdrop: Rectangle {
+        background: Theme.veil;
+    }
+
+    VerticalLayout {
+        // ---------- barra de título: logo, busca e os botões da janela ----------
+        Rectangle {
+            height: 40px;
+            background: Theme.base;
+            // Arrastar move a janela; dois cliques seguidos maximizam (o Rust mede o intervalo).
+            TouchArea {
+                pointer-event(e) => {
+                    if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                        root.drag-window();
+                    }
+                }
+            }
+            HorizontalLayout {
+                padding-left: 14px;
+                spacing: 10px;
+                // Logo com a escrita da própria arte: a versão neon no escuro, a de vidro no claro.
+                VerticalLayout {
+                    alignment: center;
+                    Image {
+                        height: 30px;
+                        width: self.height * self.source.width / self.source.height;
+                        source: Theme.dark ? @image-url("../../../assets/brand/kage-logo-dark.png") : @image-url("../../../assets/brand/kage-logo-light.png");
+                        image-fit: contain;
+                    }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                CaptionButton {
+                    glyph: "\u{E921}";
+                    tip: "Minimizar";
+                    clicked => { root.minimize-window(); }
+                }
+                CaptionButton {
+                    glyph: root.is-maximized ? "\u{E923}" : "\u{E922}";
+                    tip: root.is-maximized ? "Restaurar" : "Maximizar";
+                    clicked => { root.toggle-maximize(); }
+                }
+                CaptionButton {
+                    glyph: "\u{E8BB}";
+                    tip: "Fechar";
+                    close: true;
+                    clicked => { root.close-window(); }
+                }
+            }
+            // Busca no meio da barra de título.
+            if !root.settings-open && root.tab == 0: TextBox {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 340px;
+                placeholder: "Pesquisar em Minha biblioteca";
+                trailing-icon: @image-url("icons/search.svg");
+                text <=> root.search-text;
+                edited(text) => { root.search-changed(text); }
+            }
+        }
+
+        // ---------- abas e ações ----------
+        Rectangle {
+            height: 48px;
+            background: Theme.base;
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 16px;
+                padding-bottom: 4px;
+                spacing: 4px;
+                if !root.settings-open: TopTab {
+                    icon: @image-url("icons/layout-grid.svg");
+                    label: "Minha biblioteca";
+                    active: root.tab == 0;
+                    clicked => {
+                        root.tab = 0;
+                        root.skin-detail-open = false;
+                    }
+                }
+                if !root.settings-open: TopTab {
+                    icon: @image-url("icons/gauge.svg");
+                    label: "Skins";
+                    active: root.tab == 1;
+                    clicked => { root.tab = 1; }
+                }
+                if root.settings-open: VerticalLayout {
+                    alignment: center;
+                    ChevronButton {
+                        icon: @image-url("icons/arrow-left.svg");
+                        tip: "Voltar";
+                        clicked => { root.settings-open = false; }
+                    }
+                }
+                if root.settings-open: Rectangle { width: 6px; }
+                if root.settings-open: TopTab {
+                    label: "Geral";
+                    active: root.settings-tab == 0;
+                    clicked => { root.settings-tab = 0; }
+                }
+                if root.settings-open: TopTab {
+                    label: "Desempenho";
+                    active: root.settings-tab == 1;
+                    clicked => { root.settings-tab = 1; }
+                }
+                if root.settings-open: TopTab {
+                    label: "Plano de Fundo";
+                    active: root.settings-tab == 2;
+                    clicked => { root.settings-tab = 2; }
+                }
+                if root.settings-open: TopTab {
+                    label: "Protetor de Tela";
+                    active: root.settings-tab == 3;
+                    clicked => { root.settings-tab = 3; }
+                }
+                if root.settings-open: TopTab {
+                    label: "Sistema";
+                    active: root.settings-tab == 4;
+                    clicked => { root.settings-tab = 4; }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                if !root.settings-open: VerticalLayout {
+                    alignment: center;
+                    HorizontalLayout {
+                        spacing: 4px;
+                        IconButton {
+                            icon: @image-url("icons/plus.svg");
+                            tip: "Adicionar";
+                            active: root.dialog == 1;
+                            clicked => { root.dialog = 1; }
+                        }
+                        IconButton {
+                            icon: @image-url("icons/monitor.svg");
+                            badge: root.monitors.length;
+                            tip: "Escolha um monitor (" + root.monitors.length + " telas)";
+                            active: root.dialog == 2;
+                            clicked => { root.dialog = 2; }
+                        }
+                        IconButton {
+                            icon: @image-url("icons/settings.svg");
+                            tip: "Configurações";
+                            clicked => { root.settings-open = true; }
+                        }
+                        // Mais opções: Tema, Atualizações, Novidades e Sobre o Kage. O pontinho
+                        // azul avisa que há versão nova.
+                        Rectangle {
+                            width: more-button.width;
+                            more-button := IconButton {
+                                icon: @image-url("icons/ellipsis.svg");
+                                tip: "Mais opções";
+                                dot: root.update-state == 3;
+                                clicked => { more-menu.show(); }
+                            }
+                            more-menu := PopupWindow {
+                                x: parent.width - 240px;
+                                y: parent.height + 4px;
+                                width: 240px;
+                                height: 4 * 36px + 4 * 2px + 8px + 1px;
+                                Flyout { }
+                                VerticalLayout {
+                                    padding: 4px;
+                                    spacing: 2px;
+                                    MenuEntry {
+                                        icon: @image-url("icons/palette.svg");
+                                        text: "Tema";
+                                        clicked => {
+                                            more-menu.close();
+                                            root.dialog = 7;
+                                        }
+                                    }
+                                    MenuSeparator { }
+                                    MenuEntry {
+                                        icon: @image-url("icons/download.svg");
+                                        text: "Atualizações";
+                                        note: root.update-state == 3 ? "Nova" : "";
+                                        clicked => {
+                                            more-menu.close();
+                                            root.dialog = 10;
+                                        }
+                                    }
+                                    MenuEntry {
+                                        icon: @image-url("icons/sparkles.svg");
+                                        text: "Novidades";
+                                        clicked => {
+                                            more-menu.close();
+                                            root.dialog = 11;
+                                        }
+                                    }
+                                    MenuEntry {
+                                        icon: @image-url("icons/info.svg");
+                                        text: "Sobre o Kage";
+                                        clicked => {
+                                            more-menu.close();
+                                            root.dialog = 9;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Rectangle {
+            height: 1px;
+            background: Theme.stroke;
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+
+            // ---------- Minha biblioteca ----------
+            if !root.settings-open && root.tab == 0: HorizontalLayout {
+                Rectangle {
+                    width: 248px;
+                    background: Theme.pane;
+                    VerticalLayout {
+                        padding: 16px;
+                        padding-top: 20px;
+                        spacing: 2px;
+                        Text {
+                            text: "MINHA BIBLIOTECA";
+                            color: Theme.accent-text;
+                            font-size: 12px;
+                            font-weight: 600;
+                            letter-spacing: 1px;
+                            height: 30px;
+                            vertical-alignment: center;
+                        }
+                        NavItem {
+                            icon: @image-url("icons/layout-grid.svg");
+                            label: "Todos os wallpapers";
+                            count: root.count-all;
+                            active: root.filter == 0;
+                            clicked => { root.set-filter(0); }
+                        }
+                        NavItem {
+                            icon: @image-url("icons/video.svg");
+                            label: "Vídeos";
+                            count: root.count-video;
+                            active: root.filter == 1;
+                            clicked => { root.set-filter(1); }
+                        }
+                        NavItem {
+                            icon: @image-url("icons/image.svg");
+                            label: "Imagens";
+                            count: root.count-image;
+                            active: root.filter == 2;
+                            clicked => { root.set-filter(2); }
+                        }
+                        NavItem {
+                            icon: @image-url("icons/image-play.svg");
+                            label: "GIFs";
+                            count: root.count-gif;
+                            active: root.filter == 3;
+                            clicked => { root.set-filter(3); }
+                        }
+                        Rectangle { vertical-stretch: 1; }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            padding-left: 12px;
+                            height: 32px;
+                            VerticalLayout {
+                                alignment: center;
+                                Rectangle {
+                                    width: 8px;
+                                    height: 8px;
+                                    border-radius: 4px;
+                                    background: root.engine-running ? #3fb950 : Theme.muted;
+                                }
+                            }
+                            Text {
+                                text: (root.engine-running ? "Motor ativo" : "Motor parado") + (root.engine-detail != "" ? "  ·  " + root.engine-detail : "");
+                                color: Theme.secondary;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+                Rectangle {
+                    width: 1px;
+                    background: Theme.stroke;
+                }
+                VerticalLayout {
+                    padding-left: 32px;
+                    padding-right: 32px;
+                    padding-top: 22px;
+                    spacing: 0px;
+                    Text {
+                        text: "Minha biblioteca";
+                        color: Theme.text;
+                        font-size: 26px;
+                        font-weight: 600;
+                    }
+                    Text {
+                        text: "Os vídeos, imagens e GIFs que você adicionou ao Kage.";
+                        color: Theme.secondary;
+                        font-size: 13px;
+                    }
+                    Rectangle { height: 18px; }
+                    HorizontalLayout {
+                        height: 40px;
+                        spacing: 12px;
+                        VerticalLayout {
+                            alignment: center;
+                            Icon {
+                                width: 18px;
+                                height: 18px;
+                                source: @image-url("icons/upload.svg");
+                            }
+                        }
+                        Text {
+                            text: "Meus wallpapers";
+                            color: Theme.text;
+                            font-size: 19px;
+                            font-weight: 600;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: root.count-all + " wallpaper(s) · " + root.target-label;
+                            color: Theme.secondary;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                            overflow: elide;
+                        }
+                        // Ver tudo: tira o filtro e a busca e mostra a biblioteca inteira.
+                        Text {
+                            text: "Ver tudo";
+                            color: view-all.has-hover ? Theme.accent-text : Theme.link;
+                            font-weight: 600;
+                            vertical-alignment: center;
+                            accessible-role: button;
+                            accessible-label: "Ver todos os wallpapers";
+                            accessible-action-default => { root.show-all(); }
+                            view-all := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.show-all(); }
+                            }
+                        }
+                    }
+                    Rectangle { height: 8px; }
+                    Rectangle {
+                        height: 1px;
+                        background: Theme.stroke;
+                    }
+                    Rectangle { height: 20px; }
+                    // Rola pela rodinha sem mostrar barra de rolagem.
+                    Flickable {
+                        vertical-stretch: 1;
+                        property <int> columns: Math.max(1, Math.floor((self.width + 16px) / 286px));
+                        content-width: self.width;
+                        content-height: Math.ceil(root.wallpapers.length / self.columns) * 208px;
+                        for item[i] in root.wallpapers: WallpaperCard {
+                            x: Math.mod(i, parent.columns) * 286px;
+                            y: Math.floor(i / parent.columns) * 208px;
+                            item: item;
+                            apply => { root.pick-wallpaper(item.id); }
+                            about => { root.about-wallpaper(item.id); }
+                            preview => { root.preview-wallpaper(item.id); }
+                            customize => { root.customize-wallpaper(item.id); }
+                            reveal => { root.reveal-wallpaper(item.id); }
+                            share => { root.share-wallpaper(item.id); }
+                            remove => { root.remove-wallpaper(item.id); }
+                            edit => { root.edit-wallpaper(item.id); }
+                        }
+                    }
+                    if root.wallpapers.length == 0: Text {
+                        height: 120px;
+                        text: root.count-all == 0 ? "Nenhum wallpaper ainda. Clique em + para adicionar vídeos, imagens ou GIFs." : "Nada com esse filtro.";
+                        color: Theme.secondary;
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+
+            // ---------- Skins ----------
+            if !root.settings-open && root.tab == 1: HorizontalLayout {
+                Rectangle {
+                    width: 248px;
+                    background: Theme.pane;
+                    VerticalLayout {
+                        padding: 16px;
+                        padding-top: 20px;
+                        spacing: 2px;
+                        Text {
+                            text: "SKINS";
+                            color: Theme.accent-text;
+                            font-size: 12px;
+                            font-weight: 600;
+                            letter-spacing: 1px;
+                            height: 30px;
+                            vertical-alignment: center;
+                        }
+                        for f[i] in root.skin-filters: NavItem {
+                            icon: i == 0 ? @image-url("icons/layout-grid.svg") : i == 1 ? @image-url("icons/power.svg") : i == 2 ? @image-url("icons/star.svg") : @image-url("icons/folder.svg");
+                            label: f.label;
+                            count: f.count;
+                            active: root.skin-filter == i && !root.skin-detail-open;
+                            clicked => {
+                                root.skin-detail-open = false;
+                                root.set-skin-filter(i);
+                            }
+                        }
+                        Rectangle { vertical-stretch: 1; }
+                        Text {
+                            text: root.active-skins + " de " + root.max-skins + " skins ligadas";
+                            color: Theme.secondary;
+                            font-size: 12px;
+                            height: 32px;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+                Rectangle {
+                    width: 1px;
+                    background: Theme.stroke;
+                }
+
+                // Grade das skins
+                if !root.skin-detail-open: VerticalLayout {
+                    padding-left: 32px;
+                    padding-right: 32px;
+                    padding-top: 22px;
+                    spacing: 0px;
+                    Text {
+                        text: "Skins";
+                        color: Theme.text;
+                        font-size: 26px;
+                        font-weight: 600;
+                    }
+                    Text {
+                        text: "Cada skin numa janela própria. Clique numa skin para escolher as telas.";
+                        color: Theme.secondary;
+                        font-size: 13px;
+                    }
+                    Rectangle { height: 18px; }
+                    HorizontalLayout {
+                        height: 40px;
+                        spacing: 12px;
+                        VerticalLayout {
+                            alignment: center;
+                            Icon {
+                                width: 18px;
+                                height: 18px;
+                                source: @image-url("icons/gauge.svg");
+                            }
+                        }
+                        Text {
+                            text: "Minhas skins";
+                            color: Theme.text;
+                            font-size: 19px;
+                            font-weight: 600;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: root.skin-cards.length + " skin(s) · até " + root.max-skins + " ligadas ao mesmo tempo";
+                            color: Theme.secondary;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                            overflow: elide;
+                        }
+                        // Skins tiradas da lista: um link para trazer de volta.
+                        if root.hidden-skins > 0: Text {
+                            text: root.hidden-skins + " fora da lista · Mostrar";
+                            color: show-hidden.has-hover ? Theme.accent-text : Theme.link;
+                            vertical-alignment: center;
+                            accessible-role: button;
+                            accessible-label: "Mostrar as skins fora da lista";
+                            accessible-action-default => { root.show-hidden-skins(); }
+                            show-hidden := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.show-hidden-skins(); }
+                            }
+                        }
+                        Rectangle { width: 12px; }
+                        VerticalLayout {
+                            alignment: center;
+                            ToggleSwitch {
+                                checked <=> root.skins-enabled;
+                                toggled(v) => { root.toggle-skins(v); }
+                            }
+                        }
+                    }
+                    Rectangle { height: 8px; }
+                    Rectangle {
+                        height: 1px;
+                        background: Theme.stroke;
+                    }
+                    Rectangle { height: 20px; }
+                    Flickable {
+                        vertical-stretch: 1;
+                        property <int> columns: Math.max(1, Math.floor((self.width + 16px) / 286px));
+                        content-width: self.width;
+                        content-height: Math.ceil(root.skin-cards.length / self.columns) * 208px;
+                        for item[i] in root.skin-cards: SkinCardView {
+                            x: Math.mod(i, parent.columns) * 286px;
+                            y: Math.floor(i / parent.columns) * 208px;
+                            item: item;
+                            open => { root.open-skin(item.key); }
+                            settings => { root.open-skin-settings(item.key); }
+                            edit => { root.skin-action(item.key, "edit"); }
+                            folder => { root.skin-action(item.key, "folder"); }
+                            favorite => { root.skin-action(item.key, "favorite"); }
+                            off => { root.skin-action(item.key, "off"); }
+                            hide => { root.skin-action(item.key, "hide"); }
+                        }
+                    }
+                    if root.skin-cards.length == 0: Text {
+                        height: 120px;
+                        text: "Nenhuma skin com esse filtro.";
+                        color: Theme.secondary;
+                        horizontal-alignment: center;
+                    }
+                }
+
+                // Configurações de uma skin, por tela
+                if root.skin-detail-open: detail-scroll := Flickable {
+                    content-width: self.width;
+                    content-height: detail.preferred-height;
+                    detail := VerticalLayout {
+                        width: detail-scroll.width;
+                        padding-left: 24px;
+                        padding-right: 24px;
+                        padding-top: 16px;
+                        padding-bottom: 24px;
+                        spacing: 0px;
+                        HorizontalLayout {
+                            spacing: 10px;
+                            height: 44px;
+                            VerticalLayout {
+                                alignment: center;
+                                ChevronButton {
+                                    icon: @image-url("icons/arrow-left.svg");
+                                    tip: "Voltar para as skins";
+                                    clicked => { root.skin-detail-open = false; }
+                                }
+                            }
+                            Text {
+                                text: root.skin-name;
+                                color: Theme.text;
+                                font-size: 22px;
+                                font-weight: 600;
+                                vertical-alignment: center;
+                            }
+                            Text {
+                                text: root.skin-suite;
+                                color: Theme.secondary;
+                                font-size: 14px;
+                                vertical-alignment: center;
+                            }
+                            Rectangle { horizontal-stretch: 1; }
+                            VerticalLayout {
+                                alignment: center;
+                                SecondaryButton {
+                                    icon: @image-url("icons/monitor.svg");
+                                    text: "Escolher telas";
+                                    clicked => { root.dialog = 8; }
+                                }
+                            }
+                        }
+                        Rectangle { height: 12px; }
+                        Rectangle {
+                            height: 170px;
+                            border-radius: 4px;
+                            clip: true;
+                            background: Theme.preview;
+                            if root.skin-has-preview: Image {
+                                x: 16px;
+                                y: 16px;
+                                width: parent.width - 32px;
+                                height: parent.height - 32px;
+                                source: root.skin-preview;
+                                image-fit: contain;
+                            }
+                        }
+                        if root.skin-instances.length == 0: VerticalLayout {
+                            SectionHeader { text: "Telas"; }
+                            SettingsCard {
+                                icon: @image-url("icons/power.svg");
+                                title: "Desligada em todas as telas";
+                                description: "Escolha as telas onde ela vai aparecer; cada tela tem as próprias opções.";
+                                PrimaryButton {
+                                    text: "Escolher telas";
+                                    clicked => { root.dialog = 8; }
+                                }
+                            }
+                        }
+                        if root.skin-instances.length > 0: VerticalLayout {
+                            HorizontalLayout {
+                                height: 52px;
+                                spacing: 14px;
+                                Text {
+                                    text: "Opções da tela";
+                                    color: Theme.text;
+                                    font-size: 14px;
+                                    font-weight: 600;
+                                    vertical-alignment: center;
+                                }
+                                VerticalLayout {
+                                    alignment: center;
+                                    Segmented {
+                                        width: root.skin-instances.length * 100px;
+                                        options: root.skin-instances;
+                                        selected <=> root.skin-instance;
+                                        changed(i) => { root.select-skin-instance(i); }
+                                    }
+                                }
+                                Rectangle { horizontal-stretch: 1; }
+                            }
+                            SettingsCard {
+                                icon: @image-url("icons/move.svg");
+                                title: "Posição";
+                                description: "Centralizada fica no meio da tela, na altura escolhida. Livre fica onde você arrastar.";
+                                DropDown {
+                                    model: ["Centralizada", "Livre"];
+                                    current-index <=> root.s-anchor;
+                                    selected(i) => { root.set-skin-option("anchor", i); }
+                                }
+                            }
+                            if root.s-anchor == 0: SettingsCard {
+                                icon: @image-url("icons/arrow-up-to-line.svg");
+                                title: "Altura na tela";
+                                description: "Centro da skin a " + Math.round(height-slider.shown) + "% da altura do monitor (50% = centro).";
+                                indent: true;
+                                SecondaryButton {
+                                    text: "Centro";
+                                    clicked => { root.set-skin-height(50); }
+                                }
+                                SecondaryButton {
+                                    text: "Um pouco acima";
+                                    clicked => { root.set-skin-height(30); }
+                                }
+                                height-slider := RangeSlider {
+                                    width: 180px;
+                                    minimum: 5;
+                                    maximum: 95;
+                                    value: root.s-height;
+                                    released(v) => { root.set-skin-height(v); }
+                                }
+                            }
+                            if root.s-anchor == 1: SettingsCard {
+                                icon: @image-url("icons/crosshair.svg");
+                                title: "Posição livre";
+                                description: "Pixels da tela virtual; 0, 0 é o canto de cima à esquerda do monitor principal.";
+                                indent: true;
+                                Text {
+                                    text: "X";
+                                    color: Theme.secondary;
+                                    vertical-alignment: center;
+                                }
+                                x-edit := TextBox {
+                                    width: 90px;
+                                    text: root.s-x;
+                                    placeholder: "X";
+                                    input-type: decimal;
+                                }
+                                Text {
+                                    text: "Y";
+                                    color: Theme.secondary;
+                                    vertical-alignment: center;
+                                }
+                                y-edit := TextBox {
+                                    width: 90px;
+                                    text: root.s-y;
+                                    placeholder: "Y";
+                                    input-type: decimal;
+                                }
+                                PrimaryButton {
+                                    text: "Aplicar";
+                                    clicked => { root.set-skin-xy(x-edit.text, y-edit.text); }
+                                }
+                            }
+                            SettingsCard {
+                                icon: @image-url("icons/files.svg");
+                                title: "Variante";
+                                description: "Os arquivos .ini da pasta da skin.";
+                                DropDown {
+                                    model: root.s-variants;
+                                    current-index <=> root.s-variant;
+                                    selected(i) => { root.set-skin-option("variant", i); }
+                                }
+                            }
+                            SectionHeader { text: "Aparência"; }
+                            SettingsCard {
+                                icon: @image-url("icons/droplets.svg");
+                                title: "Transparência";
+                                description: "~100% deixa a skin quase invisível, mas ela continua recebendo o mouse.";
+                                DropDown {
+                                    model: ["0%", "10%", "20%", "30%", "40%", "50%", "60%", "70%", "80%", "90%", "~100%"];
+                                    current-index <=> root.s-alpha;
+                                    selected(i) => { root.set-skin-option("alpha", i); }
+                                }
+                            }
+                            SettingsCard {
+                                icon: @image-url("icons/layers.svg");
+                                title: "Camada";
+                                description: "No desktop fica logo acima dos ícones e continua à vista no Win+D.";
+                                DropDown {
+                                    model: ["Sempre visível", "Acima", "Normal", "Abaixo", "No desktop"];
+                                    current-index <=> root.s-layer;
+                                    selected(i) => { root.set-skin-option("layer", i); }
+                                }
+                            }
+                            SettingsCard {
+                                icon: @image-url("icons/mouse-pointer-2.svg");
+                                title: "Ao passar o mouse";
+                                description: "Segurando Ctrl, Shift ou Alt a skin não se esconde.";
+                                DropDown {
+                                    model: ["Não fazer nada", "Esconder", "Aparecer", "Desaparecer"];
+                                    current-index <=> root.s-hover;
+                                    selected(i) => { root.set-skin-option("hover", i); }
+                                }
+                            }
+                            SectionHeader { text: "Mouse"; }
+                            SettingsCard {
+                                icon: @image-url("icons/mouse-pointer-click.svg");
+                                title: "Clicar através da skin";
+                                description: "O clique passa para o que está embaixo. Segure Ctrl, Shift ou Alt para alcançar a skin.";
+                                ToggleSwitch {
+                                    checked <=> root.s-click;
+                                    toggled(v) => { root.set-skin-option("click", v ? 1 : 0); }
+                                }
+                            }
+                            SettingsCard {
+                                icon: @image-url("icons/grab.svg");
+                                title: "Arrastável";
+                                description: "Com Ctrl, a skin arrasta mesmo desligado.";
+                                ToggleSwitch {
+                                    checked <=> root.s-drag;
+                                    toggled(v) => { root.set-skin-option("drag", v ? 1 : 0); }
+                                }
+                            }
+                            SettingsCard {
+                                icon: @image-url("icons/magnet.svg");
+                                title: "Grudar nas bordas";
+                                description: "A 10 px das bordas da tela e de outras skins. Ctrl ou Shift soltam enquanto arrasta.";
+                                ToggleSwitch {
+                                    checked <=> root.s-snap;
+                                    toggled(v) => { root.set-skin-option("snap", v ? 1 : 0); }
+                                }
+                            }
+                            SettingsCard {
+                                icon: @image-url("icons/scan.svg");
+                                title: "Manter na tela";
+                                description: "A skin não sai do monitor ao ser arrastada.";
+                                ToggleSwitch {
+                                    checked <=> root.s-keep;
+                                    toggled(v) => { root.set-skin-option("keep", v ? 1 : 0); }
+                                }
+                            }
+                            SettingsCard {
+                                icon: @image-url("icons/save.svg");
+                                title: "Salvar posição";
+                                description: "Guarda onde a skin foi solta.";
+                                ToggleSwitch {
+                                    checked <=> root.s-save;
+                                    toggled(v) => { root.set-skin-option("save", v ? 1 : 0); }
+                                }
+                            }
+                            SectionHeader { text: "Ações"; }
+                            SettingsCard {
+                                icon: @image-url("icons/pencil.svg");
+                                title: "Editar skin";
+                                description: "Abre o .ini no Bloco de Notas. Clique direito na skin também mostra todas as opções.";
+                                SecondaryButton {
+                                    text: "Abrir pasta";
+                                    icon: @image-url("icons/folder.svg");
+                                    clicked => { root.skin-action("", "folder"); }
+                                }
+                                SecondaryButton {
+                                    text: "Editar";
+                                    icon: @image-url("icons/pencil.svg");
+                                    clicked => { root.skin-action("", "edit"); }
+                                }
+                                SecondaryButton {
+                                    text: "Desligar nesta tela";
+                                    icon: @image-url("icons/power.svg");
+                                    danger: true;
+                                    clicked => { root.set-skin-option("off", 0); }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ---------- Configurações ----------
+            if root.settings-open: settings-scroll := Flickable {
+                content-width: self.width;
+                content-height: settings.preferred-height;
+                settings := VerticalLayout {
+                    width: settings-scroll.width;
+                    padding-left: 9px;
+                    padding-right: 9px;
+                    padding-top: 6px;
+                    padding-bottom: 24px;
+                    spacing: 0px;
+
+                    // Geral
+                    if root.settings-tab == 0: VerticalLayout {
+                        SectionHeader { text: "Aparência & comportamento"; }
+                        SettingsCard {
+                            icon: @image-url("icons/play.svg");
+                            title: "Iniciar com o Windows";
+                            description: "O Kage precisa ser executado em segundo plano para reproduzir o wallpaper.";
+                            ToggleSwitch {
+                                checked <=> root.start-with-windows;
+                                toggled(v) => { root.set-start-with-windows(v); }
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/panel-bottom.svg");
+                            title: "Ícone da bandeja do sistema";
+                            description: "Visibilidade do ícone na bandeja do sistema; o Kage continua rodando com o ícone oculto.";
+                            soon: true;
+                            ToggleSwitch {
+                                checked: true;
+                                enabled: false;
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/languages.svg");
+                            title: "Idioma";
+                            description: "Idioma da interface do Kage.";
+                            DropDown {
+                                model: ["Português (Brasil)"];
+                                current-index: 0;
+                            }
+                        }
+                        SectionHeader { text: "Áudio"; }
+                        SettingsCard {
+                            icon: @image-url("icons/volume-2.svg");
+                            title: "Volume";
+                            description: "Nível de volume de todos os wallpapers. Hoje eles tocam sem som.";
+                            soon: true;
+                            RangeSlider {
+                                enabled: false;
+                                value: 75;
+                            }
+                        }
+                        SectionHeader { text: "Arquivo"; }
+                        SettingsCard {
+                            icon: @image-url("icons/folder.svg");
+                            title: "Local dos wallpapers";
+                            description: "Pasta onde o Kage guarda a configuração e as miniaturas.";
+                            ChevronButton {
+                                icon: root.folder-expanded ? @image-url("icons/chevron-up.svg") : @image-url("icons/chevron-down.svg");
+                                tip: "Mostrar a pasta";
+                                clicked => { root.folder-expanded = !root.folder-expanded; }
+                            }
+                        }
+                        if root.folder-expanded: SettingsCard {
+                            title: root.data-path;
+                            indent: true;
+                            SecondaryButton {
+                                text: "Abrir pasta";
+                                clicked => { root.open-data-folder(); }
+                            }
+                        }
+                    }
+
+                    // Desempenho
+                    if root.settings-tab == 1: VerticalLayout {
+                        SectionHeader { text: "Reprodução do plano de fundo"; }
+                        SettingsCard {
+                            icon: @image-url("icons/maximize.svg");
+                            title: "Quando outro aplicativo estiver em tela cheia";
+                            description: "Definir o que fazer quando algum jogo/aplicativo está em tela cheia.";
+                            PausePlay {
+                                selected <=> root.fullscreen-rule;
+                                changed(v) => { root.set-rule("fullscreen", v); }
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/app-window.svg");
+                            title: "Outro aplicativo em foco";
+                            description: "Definir o que fazer quando algum aplicativo está em foco.";
+                            PausePlay {
+                                selected <=> root.focus-rule;
+                                changed(v) => { root.set-rule("focus", v); }
+                            }
+                        }
+                        SectionHeader { text: "Notebooks"; }
+                        SettingsCard {
+                            icon: @image-url("icons/battery-medium.svg");
+                            title: "Quando estiver na energia da bateria";
+                            description: "(Somente para sistemas com bateria) Mudar reprodução quando o cabo de energia está desconectado.";
+                            PausePlay {
+                                selected <=> root.battery-rule;
+                                changed(v) => { root.set-rule("battery", v); }
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/leaf.svg");
+                            title: "Quando estiver na Economia de Bateria";
+                            description: "Mudar reprodução quando o modo de economia de bateria do Windows estiver ativo.";
+                            PausePlay {
+                                selected <=> root.saver-rule;
+                                changed(v) => { root.set-rule("saver", v); }
+                            }
+                        }
+                        SectionHeader { text: "Sistema"; }
+                        SettingsCard {
+                            icon: @image-url("icons/screen-share.svg");
+                            title: "Quando estiver na Área de Trabalho Remota";
+                            description: "Mudar reprodução quando estiver em uma sessão da Área de Trabalho Remota.";
+                            PausePlay {
+                                selected <=> root.remote-rule;
+                                changed(v) => { root.set-rule("remote", v); }
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/lock.svg");
+                            title: "Reiniciar plano de fundo ao retornar da tela de bloqueio";
+                            soon: true;
+                            ToggleSwitch {
+                                checked: false;
+                                enabled: false;
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/monitor.svg");
+                            title: "Regra de exibição em pausa";
+                            description: "Por tela: pausar o wallpaper somente na tela em que o aplicativo está em foco/tela cheia. Todas: pausar em todas as telas.";
+                            DropDown {
+                                model: ["Por tela", "Todas"];
+                                current-index <=> root.scope;
+                                selected(i) => { root.set-rule("scope", i); }
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/memory-stick.svg");
+                            title: "Liberar memória quando pausado";
+                            description: "O Kage pausa por eventos do Windows e, pausado, solta o decodificador e a memória de vídeo.";
+                            DropDown {
+                                model: ["Nunca", "Depois de 30 s", "Depois de 1 min", "Depois de 2 min", "Depois de 5 min", "Depois de 10 min"];
+                                current-index <=> root.release-index;
+                                selected(i) => { root.set-release(i); }
+                            }
+                        }
+                        SectionHeader { text: "Aplicação"; }
+                        SettingsCard {
+                            icon: @image-url("icons/list-checks.svg");
+                            title: "Regras de aplicativos";
+                            description: "Definir diferentes regras de reprodução dos wallpapers baseado no aplicativo sendo executado.";
+                            ChevronButton {
+                                icon: root.rules-expanded ? @image-url("icons/chevron-up.svg") : @image-url("icons/chevron-down.svg");
+                                tip: "Mostrar as regras";
+                                clicked => { root.rules-expanded = !root.rules-expanded; }
+                            }
+                        }
+                        if root.rules-expanded: VerticalLayout {
+                            for rule[i] in root.app-rules: SettingsCard {
+                                title: rule.exe;
+                                description: rule.action == 0 ? "Pausa enquanto o app tem janela aberta." : rule.action == 1 ? "Nunca pausa o wallpaper, nem cobrindo a tela." : "Pausa e libera a memória na hora.";
+                                indent: true;
+                                SecondaryButton {
+                                    text: "Remover";
+                                    icon: @image-url("icons/trash.svg");
+                                    danger: true;
+                                    clicked => { root.remove-app-rule(i); }
+                                }
+                            }
+                            SettingsCard {
+                                indent: true;
+                                title: "Nova regra";
+                                exe-edit := TextBox {
+                                    width: 260px;
+                                    placeholder: "programa.exe (ex.: obs64.exe)";
+                                }
+                                action-box := DropDown {
+                                    width: 180px;
+                                    model: ["Pausar", "Ignorar", "Liberar memória"];
+                                }
+                                SecondaryButton {
+                                    text: "Adicionar";
+                                    icon: @image-url("icons/plus.svg");
+                                    clicked => {
+                                        root.add-app-rule(exe-edit.text, action-box.current-index);
+                                        exe-edit.text = "";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Plano de fundo
+                    if root.settings-tab == 2: VerticalLayout {
+                        SectionHeader { text: "Aparência & comportamento"; }
+                        SettingsCard {
+                            icon: @image-url("icons/wallpaper.svg");
+                            title: "Imagem da Área de Trabalho";
+                            description: "Definir uma imagem do wallpaper animado como papel de parede da área de trabalho.";
+                            soon: true;
+                            ToggleSwitch {
+                                checked: false;
+                                enabled: false;
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/scaling.svg");
+                            title: "Escolha um ajuste";
+                            description: "Algoritmo de dimensionamento do wallpaper.";
+                            DropDown {
+                                model: ["Preencher", "Ajustar", "Esticar"];
+                                current-index <=> root.fit;
+                                selected(i) => { root.set-fit(i); }
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/columns-2.svg");
+                            title: "Disposição";
+                            description: "Como o wallpaper é aplicado às telas conectadas.";
+                            DropDown {
+                                model: ["Tela", "Span", "Duplicar"];
+                                current-index <=> root.arrangement;
+                                selected(i) => { root.set-arrangement(i); }
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/monitor-play.svg");
+                            title: "Sempre selecionar a tela ao escolher o wallpaper";
+                            description: "Com mais de um monitor, clicar num wallpaper abre a escolha do monitor.";
+                            ToggleSwitch {
+                                checked <=> root.ask-monitor;
+                                toggled(v) => { root.set-ask-monitor(v); }
+                            }
+                        }
+                        SectionHeader { text: "Plugins"; }
+                        SettingsCard {
+                            icon: @image-url("icons/clapperboard.svg");
+                            title: "Reprodutor de vídeo";
+                            description: "Media Foundation do Windows, um decodificador por vídeo mesmo em vários monitores.";
+                            DropDown {
+                                model: ["Media Foundation"];
+                                current-index: 0;
+                            }
+                        }
+                        SettingsCard {
+                            title: "Decodificação via GPU";
+                            description: "Sempre na placa de vídeo.";
+                            indent: true;
+                            ToggleSwitch {
+                                checked: true;
+                                enabled: false;
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/globe.svg");
+                            title: "Navegador";
+                            description: "Wallpapers de página web e URL do YouTube.";
+                            soon: true;
+                        }
+                    }
+
+                    // Protetor de tela
+                    if root.settings-tab == 3: VerticalLayout {
+                        SectionHeader { text: "Aparência & comportamento"; }
+                        SettingsCard {
+                            icon: @image-url("icons/timer.svg");
+                            title: "Após o tempo de inatividade selecionado, usar o wallpaper atual como protetor de tela.";
+                            soon: true;
+                            DropDown {
+                                enabled: false;
+                                model: ["Off"];
+                                current-index: 0;
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/log-in.svg");
+                            title: "Ao retornar, exibir tela de logon";
+                            soon: true;
+                            ToggleSwitch {
+                                checked: false;
+                                enabled: false;
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/moon.svg");
+                            title: "Desvanecer para preto antes de começar";
+                            soon: true;
+                            ToggleSwitch {
+                                checked: true;
+                                enabled: false;
+                            }
+                        }
+                    }
+
+                    // Sistema
+                    if root.settings-tab == 4: VerticalLayout {
+                        SectionHeader { text: "Aparência & comportamento"; }
+                        SettingsCard {
+                            icon: @image-url("icons/panel-bottom.svg");
+                            title: "Tema da Barra de Tarefas";
+                            description: "Alterar a aparência da barra de tarefas do sistema.";
+                            soon: true;
+                            DropDown {
+                                enabled: false;
+                                model: ["Desligado"];
+                                current-index: 0;
+                            }
+                        }
+                        SectionHeader { text: "Motor"; }
+                        SettingsCard {
+                            icon: @image-url("icons/cpu.svg");
+                            title: root.engine-running ? "Motor ativo" : "Motor parado";
+                            description: root.engine-running ? "Toca os wallpapers e as skins. " + root.engine-detail : "Nenhum wallpaper animado na tela.";
+                            if !root.engine-running: PrimaryButton {
+                                text: "Iniciar";
+                                clicked => { root.start-engine(); }
+                            }
+                            if root.engine-running: SecondaryButton {
+                                text: "Parar";
+                                danger: true;
+                                clicked => { root.stop-engine(); }
+                            }
+                        }
+                        SectionHeader { text: "Desenvolvedor"; }
+                        SettingsCard {
+                            icon: @image-url("icons/file-text.svg");
+                            title: "Arquivo de log";
+                            description: "O que o motor fez: monitores, pausas, memória liberada.";
+                            ChevronButton {
+                                tip: "Abrir o registro";
+                                clicked => { root.open-log(); }
+                            }
+                        }
+                        SettingsCard {
+                            icon: @image-url("icons/folder-cog.svg");
+                            title: "Pasta de dados";
+                            description: root.data-path;
+                            ChevronButton {
+                                tip: "Abrir a pasta";
+                                clicked => { root.open-data-folder(); }
+                            }
+                        }
+                        SectionHeader { text: "Sobre"; }
+                        SettingsCard {
+                            icon: @image-url("icons/info.svg");
+                            title: "Kage 0.1.0";
+                            description: "Wallpaper animado e skins na área de trabalho, com motor em Rust. Ícones do Lucide (licença ISC).";
+                        }
+                    }
+                }
+            }
+
+            // ---------- diálogos ----------
+            if root.dialog != 0: Rectangle {
+                background: Theme.overlay;
+                // Esc fecha o diálogo, mesmo com o foco no campo de texto (a tecla sobe até aqui).
+                FocusScope {
+                    init => { self.focus(); }
+                    key-pressed(event) => {
+                        if event.text == Key.Escape {
+                            root.dialog = 0;
+                            return accept;
+                        }
+                        return reject;
+                    }
+                    TouchArea {
+                        clicked => { root.dialog = 0; }
+                    }
+                    VerticalLayout {
+                        alignment: center;
+                        HorizontalLayout {
+                            alignment: center;
+
+                            // 1. Adicionar
+                            if root.dialog == 1: Dialog {
+                                title: "Adicionar";
+                                primary-text: "OK";
+                                primary => { root.dialog = 0; }
+                                DashedBox {
+                                    height: 190px;
+                                    accessible-role: button;
+                                    accessible-label: "Clique para escolher os arquivos";
+                                    accessible-action-default => { root.add-files(); }
+                                    VerticalLayout {
+                                        alignment: center;
+                                        spacing: 14px;
+                                        HorizontalLayout {
+                                            alignment: center;
+                                            Icon {
+                                                width: 44px;
+                                                height: 44px;
+                                                source: @image-url("icons/files.svg");
+                                                colorize: Theme.secondary;
+                                            }
+                                        }
+                                        Text {
+                                            text: "Clique para escolher os arquivos";
+                                            color: Theme.secondary;
+                                            font-size: 14px;
+                                            horizontal-alignment: center;
+                                        }
+                                    }
+                                    TouchArea {
+                                        clicked => { root.add-files(); }
+                                    }
+                                }
+                                VerticalLayout {
+                                    spacing: 2px;
+                                    ActionRow {
+                                        icon: @image-url("icons/image.svg");
+                                        title: "Escolha um arquivo";
+                                        subtitle: "Definir vídeos, imagens e GIFs como wallpaper.";
+                                        clicked => { root.add-files(); }
+                                    }
+                                    ActionRow {
+                                        icon: @image-url("icons/folder-open.svg");
+                                        title: "Escolha uma pasta";
+                                        subtitle: "Adicionar todos os vídeos, imagens e GIFs da pasta.";
+                                        clicked => { root.add-folder(); }
+                                    }
+                                    ActionRow {
+                                        icon: @image-url("icons/link.svg");
+                                        title: "Insira a URL";
+                                        subtitle: "Definir a página da web da URL selecionada como wallpaper.";
+                                        enabled: false;
+                                    }
+                                }
+                            }
+
+                            // 2. Escolha um monitor (botão do topo)
+                            if root.dialog == 2: Dialog {
+                                title: "Escolha um monitor";
+                                dialog-width: 540px;
+                                primary-text: "OK";
+                                primary => { root.dialog = 0; }
+                                HorizontalLayout {
+                                    height: 40px;
+                                    spacing: 4px;
+                                    TopTab {
+                                        label: "Plano de Fundo";
+                                        active: true;
+                                    }
+                                    TopTab {
+                                        label: "Protetor de Tela";
+                                        enabled: false;
+                                    }
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+                                MonitorMap {
+                                    height: 270px;
+                                    monitors: root.monitors;
+                                    map-x: root.map-x;
+                                    map-y: root.map-y;
+                                    map-w: root.map-w;
+                                    map-h: root.map-h;
+                                    selected: root.selected-monitor;
+                                    show-selection: root.arrangement == 0;
+                                    select(i) => { root.select-monitor(i); }
+                                }
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    SecondaryButton {
+                                        icon: @image-url("icons/x.svg");
+                                        text: "Fechar Wallpapers";
+                                        clicked => { root.clear-wallpapers(); }
+                                    }
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+                                Rectangle {
+                                    height: arrangement-box.preferred-height;
+                                    border-radius: 4px;
+                                    background: Theme.dialog-card;
+                                    border-width: 1px;
+                                    border-color: Theme.stroke;
+                                    arrangement-box := VerticalLayout {
+                                        padding: 14px;
+                                        spacing: 8px;
+                                        HorizontalLayout {
+                                            spacing: 10px;
+                                            Icon {
+                                                source: @image-url("icons/layout-grid.svg");
+                                            }
+                                            Text {
+                                                text: "Selecione a disposição do wallpaper";
+                                                color: Theme.text;
+                                                font-size: 14px;
+                                                font-weight: 600;
+                                            }
+                                        }
+                                        Text {
+                                            text: "Como o wallpaper é aplicado às telas conectadas.";
+                                            color: Theme.secondary;
+                                            font-size: 12px;
+                                        }
+                                        HorizontalLayout {
+                                            Segmented {
+                                                width: 250px;
+                                                options: ["Tela (" + (root.selected-monitor + 1) + ")", "Span", "Duplicar"];
+                                                selected <=> root.arrangement;
+                                                changed(v) => { root.set-arrangement(v); }
+                                            }
+                                            Rectangle { horizontal-stretch: 1; }
+                                        }
+                                        Check {
+                                            text: "Sempre selecionar a tela ao escolher o wallpaper";
+                                            checked <=> root.ask-monitor;
+                                            toggled(v) => { root.set-ask-monitor(v); }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 3. Escolha um monitor (clique num wallpaper)
+                            if root.dialog == 3: Dialog {
+                                title: "Escolha um monitor";
+                                dialog-width: 540px;
+                                secondary-text: "Cancelar";
+                                secondary => { root.dialog = 0; }
+                                Text {
+                                    text: "Clique no monitor onde vai ficar \"" + root.pending-title + "\".";
+                                    color: Theme.secondary;
+                                    font-size: 14px;
+                                    wrap: word-wrap;
+                                }
+                                MonitorMap {
+                                    height: 270px;
+                                    monitors: root.monitors;
+                                    map-x: root.map-x;
+                                    map-y: root.map-y;
+                                    map-w: root.map-w;
+                                    map-h: root.map-h;
+                                    selected: root.selected-monitor;
+                                    show-selection: false;
+                                    select(i) => { root.apply-to-monitor(i); }
+                                }
+                                HorizontalLayout {
+                                    spacing: 8px;
+                                    SecondaryButton {
+                                        icon: @image-url("icons/columns-2.svg");
+                                        text: "Todos os monitores";
+                                        clicked => { root.apply-to-all(0); }
+                                    }
+                                    SecondaryButton {
+                                        icon: @image-url("icons/maximize.svg");
+                                        text: "Atravessar todos (Span)";
+                                        clicked => { root.apply-to-all(1); }
+                                    }
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+                            }
+
+                            // 4. Sobre
+                            if root.dialog == 4: Dialog {
+                                title: "Sobre";
+                                dialog-width: 520px;
+                                primary-text: "OK";
+                                primary => { root.dialog = 0; }
+                                // 180 px cabe na janela no tamanho mínimo, com o caminho em três linhas.
+                                Rectangle {
+                                    height: 180px;
+                                    border-radius: 4px;
+                                    clip: true;
+                                    background: Theme.preview;
+                                    if root.about-has-thumb: Image {
+                                        width: parent.width;
+                                        height: parent.height;
+                                        source: root.about-thumb;
+                                        image-fit: cover;
+                                    }
+                                }
+                                Text {
+                                    text: root.about-title;
+                                    color: Theme.text;
+                                    font-size: 16px;
+                                    font-weight: 600;
+                                    wrap: word-wrap;
+                                }
+                                for row in [
+                                    { label: "Tipo", value: root.about-kind },
+                                    { label: "Tamanho", value: root.about-size },
+                                    { label: "Arquivo", value: root.about-path },
+                                ]: HorizontalLayout {
+                                    spacing: 12px;
+                                    Text {
+                                        width: 80px;
+                                        text: row.label;
+                                        color: Theme.secondary;
+                                    }
+                                    Text {
+                                        text: row.value;
+                                        color: Theme.text;
+                                        // O caminho não tem onde quebrar por palavra: quebra por letra.
+                                        wrap: row.label == "Arquivo" ? TextWrap.char-wrap : TextWrap.word-wrap;
+                                        // Largura fixa (520 - 2 x 24 de margem - 80 - 12): sem ela o layout
+                                        // mede a altura antes de saber a largura e corta a última linha.
+                                        width: 380px;
+                                    }
+                                }
+                            }
+
+                            // 5. Customizar
+                            if root.dialog == 5: Dialog {
+                                title: "Customizar";
+                                dialog-width: 560px;
+                                secondary-text: "Restaurar padrão";
+                                secondary => { root.reset-look(); }
+                                primary-text: "OK";
+                                primary => { root.dialog = 0; }
+                                Text {
+                                    text: root.about-title + ": o ajuste vale só para este wallpaper. Sem ajuste de cor, o vídeo vai direto da placa de vídeo para a tela.";
+                                    color: Theme.secondary;
+                                    wrap: word-wrap;
+                                }
+                                for row[i] in [
+                                    { label: "Velocidade", min: 25, max: 200 },
+                                    { label: "Brilho", min: 0, max: 200 },
+                                    { label: "Contraste", min: 0, max: 200 },
+                                    { label: "Saturação", min: 0, max: 200 },
+                                ]: look-row := Rectangle {
+                                    height: 60px;
+                                    border-radius: 4px;
+                                    background: Theme.dialog-card;
+                                    opacity: i == 0 && !root.look-moves ? 0.5 : 1;
+                                    property <float> current: i == 0 ? root.look-speed : i == 1 ? root.look-brightness : i == 2 ? root.look-contrast : root.look-saturation;
+                                    HorizontalLayout {
+                                        padding-left: 18px;
+                                        padding-right: 14px;
+                                        spacing: 14px;
+                                        Text {
+                                            width: 110px;
+                                            text: row.label;
+                                            color: Theme.text;
+                                            font-size: 14px;
+                                            vertical-alignment: center;
+                                        }
+                                        VerticalLayout {
+                                            alignment: center;
+                                            horizontal-stretch: 1;
+                                            look-slider := RangeSlider {
+                                                width: 260px;
+                                                enabled: i != 0 || root.look-moves;
+                                                minimum: row.min;
+                                                maximum: row.max;
+                                                value: look-row.current;
+                                                released(v) => { root.set-look(i == 0 ? "speed" : i == 1 ? "brightness" : i == 2 ? "contrast" : "saturation", v); }
+                                            }
+                                        }
+                                        Text {
+                                            width: 50px;
+                                            text: Math.round(look-slider.shown) + "%";
+                                            color: Theme.secondary;
+                                            horizontal-alignment: right;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 6. Editar
+                            if root.dialog == 6: Dialog {
+                                title: "Editar";
+                                dialog-width: 480px;
+                                secondary-text: "Cancelar";
+                                secondary => { root.dialog = 0; }
+                                primary-text: "Salvar";
+                                primary => { root.rename-wallpaper(title-edit.text); }
+                                Text {
+                                    text: "Nome do wallpaper na biblioteca. O arquivo não muda.";
+                                    color: Theme.secondary;
+                                }
+                                title-edit := TextBox {
+                                    text: root.edit-title;
+                                    placeholder: "Nome";
+                                    accepted(text) => { root.rename-wallpaper(text); }
+                                }
+                            }
+
+                            // 7. Tema
+                            if root.dialog == 7: Dialog {
+                                title: "Tema";
+                                dialog-width: 540px;
+                                primary-text: "OK";
+                                primary => { root.dialog = 0; }
+                                VerticalLayout {
+                                    spacing: 4px;
+                                    for item[i] in root.backdrops: BackdropRow {
+                                        item: item;
+                                        chosen: i == root.backdrop-choice;
+                                        solid: i == 0;
+                                        choose => { root.set-backdrop(i); }
+                                        remove => { root.remove-backdrop(i); }
+                                    }
+                                }
+                                HorizontalLayout {
+                                    SecondaryButton {
+                                        icon: @image-url("icons/folder-open.svg");
+                                        text: "Abrir";
+                                        clicked => { root.add-backdrop(); }
+                                    }
+                                    Rectangle { horizontal-stretch: 1; }
+                                }
+                                // Separa a lista de fundos da escolha da cor.
+                                Rectangle {
+                                    height: 1px;
+                                    background: Theme.stroke;
+                                }
+                                Rectangle {
+                                    height: 64px;
+                                    border-radius: 4px;
+                                    background: Theme.dialog-card;
+                                    HorizontalLayout {
+                                        padding-left: 18px;
+                                        padding-right: 14px;
+                                        spacing: 16px;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            Icon {
+                                                width: 20px;
+                                                height: 20px;
+                                                source: @image-url("icons/palette.svg");
+                                            }
+                                        }
+                                        VerticalLayout {
+                                            alignment: center;
+                                            horizontal-stretch: 1;
+                                            Text {
+                                                text: "Cor";
+                                                color: Theme.text;
+                                                font-size: 14px;
+                                            }
+                                            Text {
+                                                text: "Configurações de cor do Windows";
+                                                color: Theme.link;
+                                                font-size: 12px;
+                                                accessible-role: button;
+                                                accessible-label: self.text;
+                                                accessible-action-default => { root.open-color-settings(); }
+                                                TouchArea {
+                                                    mouse-cursor: pointer;
+                                                    clicked => { root.open-color-settings(); }
+                                                }
+                                            }
+                                        }
+                                        VerticalLayout {
+                                            alignment: center;
+                                            Segmented {
+                                                width: 230px;
+                                                options: ["Sistema", "Claro", "Escuro"];
+                                                selected <=> root.theme-choice;
+                                                changed(i) => { root.set-theme(i); }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 9. Sobre o Kage (menu "...")
+                            if root.dialog == 9: Dialog {
+                                title: "Sobre o Kage";
+                                dialog-width: 440px;
+                                primary-text: "OK";
+                                primary => { root.dialog = 0; }
+                                VerticalLayout {
+                                    spacing: 12px;
+                                    HorizontalLayout {
+                                        Image {
+                                            height: 60px;
+                                            width: self.height * self.source.width / self.source.height;
+                                            source: Theme.dark ? @image-url("../../../assets/brand/kage-logo-dark.png") : @image-url("../../../assets/brand/kage-logo-light.png");
+                                            image-fit: contain;
+                                        }
+                                        Rectangle { horizontal-stretch: 1; }
+                                    }
+                                    VerticalLayout {
+                                        spacing: 4px;
+                                        Text {
+                                            text: "Versão " + root.version;
+                                            color: Theme.text;
+                                            font-size: 15px;
+                                            font-weight: 600;
+                                        }
+                                        Text {
+                                            text: "Wallpaper animado e skins na área de trabalho, com motor em Rust.";
+                                            color: Theme.secondary;
+                                            wrap: word-wrap;
+                                        }
+                                        Text {
+                                            text: "Interface feita com Slint. Ícones do Lucide (licença ISC).";
+                                            color: Theme.muted;
+                                            font-size: 12px;
+                                        }
+                                        Text {
+                                            text: "Uso pessoal livre; venda e uso comercial não (PolyForm Noncommercial 1.0.0).";
+                                            color: Theme.muted;
+                                            font-size: 12px;
+                                            wrap: word-wrap;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 10. Atualizações (menu "...")
+                            if root.dialog == 10: Dialog {
+                                property <bool> busy: root.update-state == 1 || root.update-state == 4 || root.update-state == 5;
+                                title: "Atualizações";
+                                dialog-width: 540px;
+                                secondary-text: self.busy ? "" : "Procurar de novo";
+                                secondary => { root.check-update(); }
+                                primary-text: root.update-state == 3 ? "Atualizar agora" : root.update-state == 4 ? "Baixando..." : root.update-state == 5 ? "Instalando..." : "OK";
+                                primary-enabled: !self.busy || root.update-state == 1;
+                                primary => {
+                                    if root.update-state == 3 {
+                                        root.apply-update();
+                                    } else if root.update-state != 4 && root.update-state != 5 {
+                                        root.dialog = 0;
+                                    }
+                                }
+                                Rectangle {
+                                    height: status-row.preferred-height;
+                                    border-radius: 4px;
+                                    background: Theme.dialog-card;
+                                    status-row := HorizontalLayout {
+                                        padding: 16px;
+                                        spacing: 14px;
+                                        VerticalLayout {
+                                            alignment: center;
+                                            Icon {
+                                                width: 22px;
+                                                height: 22px;
+                                                source: root.update-state == 2 ? @image-url("icons/circle-check.svg") : root.update-state == 6 ? @image-url("icons/triangle-alert.svg") : root.update-state >= 3 ? @image-url("icons/download.svg") : @image-url("icons/refresh-cw.svg");
+                                                colorize: root.update-state == 6 ? Theme.danger : root.update-state == 0 ? Theme.text : Theme.accent-text;
+                                            }
+                                        }
+                                        VerticalLayout {
+                                            alignment: center;
+                                            spacing: 2px;
+                                            Text {
+                                                width: 420px;
+                                                text: root.update-state == 1 ? "Procurando versão nova..."
+                                                    : root.update-state == 2 ? "O Kage está em dia"
+                                                    : root.update-state == 3 ? "Versão " + root.update-version + " disponível"
+                                                    : root.update-state == 4 ? "Baixando a versão " + root.update-version + " (" + Math.round(root.update-progress * 100) + "%)"
+                                                    : root.update-state == 5 ? "Instalando a versão " + root.update-version
+                                                    : root.update-state == 6 ? "Não deu para atualizar"
+                                                    : "Versão " + root.version;
+                                                color: Theme.text;
+                                                font-size: 15px;
+                                                font-weight: 600;
+                                                wrap: word-wrap;
+                                            }
+                                            if root.update-detail != "": Text {
+                                                width: 420px;
+                                                text: root.update-detail;
+                                                color: Theme.secondary;
+                                                font-size: 12px;
+                                                wrap: word-wrap;
+                                            }
+                                        }
+                                    }
+                                }
+                                // Barra do download, enchendo com os bytes que já chegaram.
+                                if root.update-state == 4 || root.update-state == 5: Rectangle {
+                                    height: 4px;
+                                    border-radius: 2px;
+                                    background: Theme.stroke;
+                                    Rectangle {
+                                        x: 0;
+                                        width: parent.width * (root.update-state == 5 ? 1 : root.update-progress);
+                                        height: parent.height;
+                                        border-radius: 2px;
+                                        background: Theme.accent-text;
+                                    }
+                                }
+                                if root.update-state >= 3 && root.update-state <= 5 && root.update-notes != "": VerticalLayout {
+                                    spacing: 8px;
+                                    Text {
+                                        text: "O que muda na versão " + root.update-version;
+                                        color: Theme.text;
+                                        font-size: 14px;
+                                        font-weight: 600;
+                                    }
+                                    Rectangle {
+                                        height: Math.min(update-notes-text.preferred-height + 24px, 220px);
+                                        border-radius: 4px;
+                                        background: Theme.dialog-card;
+                                        clip: true;
+                                        update-notes-scroll := Flickable {
+                                            content-height: update-notes-text.preferred-height + 24px;
+                                            update-notes-text := Text {
+                                                x: 14px;
+                                                y: 12px;
+                                                width: 464px;
+                                                text: root.update-notes;
+                                                color: Theme.secondary;
+                                                wrap: word-wrap;
+                                            }
+                                        }
+                                    }
+                                }
+                                Check {
+                                    text: "Procurar versão nova ao abrir o Kage";
+                                    checked <=> root.check-updates;
+                                    toggled(v) => { root.set-check-updates(v); }
+                                }
+                                Text {
+                                    text: "Ver todas as versões no GitHub";
+                                    color: Theme.link;
+                                    font-size: 12px;
+                                    accessible-role: button;
+                                    accessible-label: self.text;
+                                    accessible-action-default => { root.open-releases(); }
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.open-releases(); }
+                                    }
+                                }
+                            }
+
+                            // 11. Novidades (menu "..." e primeira abertura de uma versão nova)
+                            if root.dialog == 11: Dialog {
+                                title: "Novidades";
+                                dialog-width: 560px;
+                                primary-text: "OK";
+                                primary => { root.dialog = 0; }
+                                Rectangle {
+                                    height: Math.min(notes-list.preferred-height, 420px);
+                                    clip: true;
+                                    notes-scroll := Flickable {
+                                        content-height: notes-list.preferred-height;
+                                        notes-list := VerticalLayout {
+                                            width: notes-scroll.width;
+                                            spacing: 12px;
+                                            for note in root.release-notes: Rectangle {
+                                                height: note-box.preferred-height;
+                                                border-radius: 4px;
+                                                background: Theme.dialog-card;
+                                                note-box := VerticalLayout {
+                                                    padding: 16px;
+                                                    spacing: 8px;
+                                                    HorizontalLayout {
+                                                        spacing: 10px;
+                                                        Text {
+                                                            text: "Versão " + note.version;
+                                                            color: Theme.text;
+                                                            font-size: 15px;
+                                                            font-weight: 600;
+                                                            vertical-alignment: center;
+                                                        }
+                                                        if note.version == root.version: VerticalLayout {
+                                                            alignment: center;
+                                                            Rectangle {
+                                                                height: 20px;
+                                                                width: installed-text.preferred-width + 14px;
+                                                                border-radius: 10px;
+                                                                background: Theme.accent-soft;
+                                                                installed-text := Text {
+                                                                    text: "Instalada";
+                                                                    color: Theme.accent-text;
+                                                                    font-size: 11px;
+                                                                    font-weight: 600;
+                                                                }
+                                                            }
+                                                        }
+                                                        Rectangle { horizontal-stretch: 1; }
+                                                        Text {
+                                                            text: note.date;
+                                                            color: Theme.muted;
+                                                            font-size: 12px;
+                                                            vertical-alignment: center;
+                                                        }
+                                                    }
+                                                    if note.title != "": Text {
+                                                        text: note.title;
+                                                        color: Theme.accent-text;
+                                                        font-size: 13px;
+                                                        font-weight: 600;
+                                                    }
+                                                    for item in note.items: HorizontalLayout {
+                                                        spacing: 8px;
+                                                        Text {
+                                                            width: 8px;
+                                                            text: "•";
+                                                            color: Theme.secondary;
+                                                        }
+                                                        // Largura fixa: o texto quebrado precisa dela para medir a altura.
+                                                        Text {
+                                                            width: 456px;
+                                                            text: item;
+                                                            color: Theme.secondary;
+                                                            wrap: word-wrap;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 8. Telas de uma skin
+                            if root.dialog == 8: Dialog {
+                                title: "Escolha as telas";
+                                dialog-width: 540px;
+                                secondary-text: "Configurar a skin";
+                                secondary => {
+                                    root.dialog = 0;
+                                    root.skin-detail-open = true;
+                                }
+                                primary-text: "OK";
+                                primary => { root.dialog = 0; }
+                                Text {
+                                    text: "Clique numa tela para ligar ou desligar \"" + root.skin-name + "\" nela. Até " + root.max-skins + " skins ligadas ao mesmo tempo (agora " + root.active-skins + ").";
+                                    color: Theme.secondary;
+                                    font-size: 14px;
+                                    wrap: word-wrap;
+                                }
+                                MonitorMap {
+                                    height: 270px;
+                                    monitors: root.monitors;
+                                    map-x: root.map-x;
+                                    map-y: root.map-y;
+                                    map-w: root.map-w;
+                                    map-h: root.map-h;
+                                    show-selection: false;
+                                    select(i) => { root.toggle-skin-screen(i); }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Aviso rápido depois de cada ação
+            if root.toast != "": Rectangle {
+                x: parent.width - self.width - 24px;
+                y: parent.height - self.height - 24px;
+                // Aviso comprido não passa da janela: corta com reticências.
+                width: Math.min(toast-row.preferred-width + 32px, parent.width - 48px);
+                height: 44px;
+                border-radius: 4px;
+                background: Theme.flyout;
+                border-width: 1px;
+                border-color: Theme.stroke;
+                drop-shadow-blur: 16px;
+                drop-shadow-color: #00000060;
+                toast-row := HorizontalLayout {
+                    alignment: center;
+                    spacing: 10px;
+                    VerticalLayout {
+                        alignment: center;
+                        Icon {
+                            width: 15px;
+                            height: 15px;
+                            source: @image-url("icons/circle-check.svg");
+                            colorize: Theme.accent-text;
+                        }
+                    }
+                    Text {
+                        text: root.toast;
+                        color: Theme.text;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                }
+            }
+        }
+    }
+
+    // Bordas de redimensionar (a janela sem moldura não tem as do Windows). Ficam por cima de
+    // tudo, com 6 px, e somem com a janela maximizada.
+    if !root.is-maximized: TouchArea {
+        x: 0;
+        y: 6px;
+        width: 6px;
+        height: parent.height - 12px;
+        mouse-cursor: ew-resize;
+        pointer-event(e) => { if e.kind == PointerEventKind.down { root.resize-window(0); } }
+    }
+    if !root.is-maximized: TouchArea {
+        x: parent.width - 6px;
+        y: 6px;
+        width: 6px;
+        height: parent.height - 12px;
+        mouse-cursor: ew-resize;
+        pointer-event(e) => { if e.kind == PointerEventKind.down { root.resize-window(1); } }
+    }
+    if !root.is-maximized: TouchArea {
+        x: 6px;
+        y: 0;
+        width: parent.width - 12px;
+        height: 4px;
+        mouse-cursor: ns-resize;
+        pointer-event(e) => { if e.kind == PointerEventKind.down { root.resize-window(2); } }
+    }
+    if !root.is-maximized: TouchArea {
+        x: 6px;
+        y: parent.height - 6px;
+        width: parent.width - 12px;
+        height: 6px;
+        mouse-cursor: ns-resize;
+        pointer-event(e) => { if e.kind == PointerEventKind.down { root.resize-window(3); } }
+    }
+    if !root.is-maximized: TouchArea {
+        x: 0;
+        y: 0;
+        width: 8px;
+        height: 8px;
+        mouse-cursor: nwse-resize;
+        pointer-event(e) => { if e.kind == PointerEventKind.down { root.resize-window(4); } }
+    }
+    if !root.is-maximized: TouchArea {
+        x: parent.width - 8px;
+        y: 0;
+        width: 8px;
+        height: 8px;
+        mouse-cursor: nesw-resize;
+        pointer-event(e) => { if e.kind == PointerEventKind.down { root.resize-window(5); } }
+    }
+    if !root.is-maximized: TouchArea {
+        x: 0;
+        y: parent.height - 8px;
+        width: 8px;
+        height: 8px;
+        mouse-cursor: nesw-resize;
+        pointer-event(e) => { if e.kind == PointerEventKind.down { root.resize-window(6); } }
+    }
+    if !root.is-maximized: TouchArea {
+        x: parent.width - 8px;
+        y: parent.height - 8px;
+        width: 8px;
+        height: 8px;
+        mouse-cursor: nwse-resize;
+        pointer-event(e) => { if e.kind == PointerEventKind.down { root.resize-window(7); } }
+    }
+}
