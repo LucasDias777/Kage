@@ -2285,15 +2285,18 @@ dependencies = [
 
 [[package]]
 name = "kage-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
+ "windows",
+ "windows-core",
+ "windows-future",
 ]
 
 [[package]]
 name = "kage-engine"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "kage-core",
  "kage-skins",
@@ -2305,14 +2308,14 @@ dependencies = [
 
 [[package]]
 name = "kage-skins"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "regex",
 ]
 
 [[package]]
 name = "kage-ui"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "kage-core",
  "kage-skins",

@@ -18,7 +18,7 @@
 <p>
   <img alt="Windows 10 e 11" src="https://img.shields.io/badge/Windows-10_|_11-0078D4?style=for-the-badge" />
   <img alt="Rust" src="https://img.shields.io/badge/Rust-2024-CE422B?style=for-the-badge&logo=rust&logoColor=white" />
-  <img alt="Versão 0.1.0" src="https://img.shields.io/badge/Vers%C3%A3o-0.1.0-00c46a?style=for-the-badge" />
+  <img alt="Versão 0.1.1" src="https://img.shields.io/badge/Vers%C3%A3o-0.1.1-00c46a?style=for-the-badge" />
   <img alt="Feito com Slint" src="https://img.shields.io/badge/Feito_com-Slint-2379F4?style=for-the-badge" />
 </p>
 
@@ -74,8 +74,9 @@
 | **Skins na área de trabalho** | Relógio, data, CPU, memória, disco, rede, player de música e mais, cada skin numa janela própria: arrastar, travar, transparência, camadas (sempre visível, normal, no desktop), clicar através, sumir ao passar o mouse e escolha de monitor |
 | **Tocando agora** | A skin do player mostra a música que está tocando no Windows (Spotify, navegador, qualquer app com os controles de mídia do sistema), com tocar, pausar, avançar, voltar e barra de tempo clicável |
 | **Janela leve** | Biblioteca, skins e configurações numa janela própria, com barra de título do Kage, tema claro e escuro e fundo personalizado. Fechada, não gasta nada: quem fica rodando é só o motor |
+| **Ícone na bandeja** | Dois cliques abrem a janela. O clique direito traz Abrir o Kage, Fechar todos os wallpapers, Pausar wallpapers (o ícone fica cinza), Alterar wallpaper (sorteia outro da biblioteca), Customizar wallpaper, o estado da atualização, Relatar um problema e Sair. Dá para esconder o ícone em Configurações › Geral |
 | **Inicia com o Windows** | Uma chave em Configurações › Geral; o motor abre sozinho com o seu usuário, sem permissão de administrador |
-| **Atualização pelo app** | Procura versão nova nas Releases deste repositório, mostra o que muda e troca os arquivos com um clique |
+| **Atualização pelo app** | Procura versão nova nas Releases deste repositório, avisa com um balão na bandeja mesmo com a janela fechada, mostra o que muda e troca os arquivos com um clique |
 | **Novidades** | Depois de cada atualização, uma tela conta o que entrou na versão |
 
 <table>
@@ -96,6 +97,12 @@
     <td align="center"><sub>Novidades da versão instalada</sub></td>
   </tr>
 </table>
+
+<div align="center">
+  <img src="docs/imagens/bandeja.png" alt="Menu do ícone na bandeja" width="230" />
+  <br/>
+  <sub>Menu do ícone na bandeja</sub>
+</div>
 
 ## Skins
 
@@ -183,14 +190,14 @@ O Kage roda no **Windows 10 ou 11**, só para o seu usuário, sem permissão de 
 
 1. Clique em **[Baixar o Kage](https://github.com/LucasDias777/Kage/releases/latest/download/Kage.zip)** e extraia o `Kage.zip` numa pasta só dele. Sugestão: `%LOCALAPPDATA%\Programs\Kage` (cole o caminho na barra do Explorador de Arquivos).
 2. Abra o `kage.exe`. Se o Windows avisar que protegeu o computador (o Kage não tem assinatura digital), clique em **Mais informações** › **Executar assim mesmo**.
-3. Clique em **+** para adicionar vídeos, imagens ou GIFs e clique num wallpaper para escolher a tela.
+3. Clique em **+** para adicionar vídeos, imagens ou GIFs e clique num wallpaper para escolher a tela. O ícone do Kage aparece na bandeja do sistema (pode estar entre os ícones ocultos, na setinha ao lado do relógio).
 4. Em **Configurações** › **Geral**, ligue **Iniciar com o Windows** para o wallpaper voltar sozinho depois de reiniciar.
 
 Os dois arquivos, `kage.exe` (a janela) e `kage-engine.exe` (o motor), ficam sempre na mesma pasta. As configurações, miniaturas e o log ficam em `%APPDATA%\Kage`.
 
 ## Atualização
 
-Ao abrir, a janela procura versão nova nas [Releases](https://github.com/LucasDias777/Kage/releases) deste repositório, que é público: não precisa de login nem de conta no GitHub. Também dá para procurar a qualquer hora em **Mais opções** (os três pontinhos) › **Atualizações**.
+O Kage procura versão nova nas [Releases](https://github.com/LucasDias777/Kage/releases) deste repositório, que é público: não precisa de login nem de conta no GitHub. O motor procura logo depois de ligar e a cada 12 horas e avisa com um balão na bandeja (clique nele para ver o que muda); a janela procura ao abrir. Também dá para procurar a qualquer hora em **Mais opções** (os três pontinhos) › **Atualizações**, ou pelo item de atualização do menu da bandeja.
 
 <div align="center">
   <img src="docs/imagens/atualizacoes.png" alt="Tela de atualizações" width="560" />
@@ -203,7 +210,7 @@ Baixar o `Kage.zip` de novo e extrair por cima (com o Kage fechado) também atua
 ## Desinstalação
 
 1. Em **Configurações** › **Geral**, desligue **Iniciar com o Windows**.
-2. Em **Configurações** › **Sistema**, clique em **Parar** para fechar o motor, e feche a janela.
+2. Clique com o botão direito no ícone do Kage na bandeja e em **Sair** (ou, em **Configurações** › **Sistema**, clique em **Parar**).
 3. Apague a pasta onde você extraiu o Kage e, se quiser apagar também a biblioteca e as configurações, a pasta `%APPDATA%\Kage`.
 
 Os seus vídeos e imagens não são apagados: o Kage só guarda o caminho deles.

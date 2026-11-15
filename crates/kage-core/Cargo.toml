@@ -7,3 +7,10 @@ description = "Configuração e biblioteca do Kage, compartilhadas pela janela e
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+windows-core = "0.62"
+windows-future = "0.3"
+
+[dependencies.windows]
+version = "0.62"
+# Só o HTTP do WinRT, para conferir a última versão publicada no GitHub.
+features = ["Foundation", "Web_Http", "Web_Http_Headers"]

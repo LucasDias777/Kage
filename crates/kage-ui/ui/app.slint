@@ -515,6 +515,8 @@ export component App inherits Window {
     in property <float> update-progress;
     in property <string> update-detail;
     in-out property <bool> check-updates: true;
+    in-out property <bool> tray-icon: true;
+    callback set-tray-icon(bool);
     in property <[ReleaseNote]> release-notes;
     callback check-update();
     callback apply-update();
@@ -1341,10 +1343,9 @@ export component App inherits Window {
                             icon: @image-url("icons/panel-bottom.svg");
                             title: "Ícone da bandeja do sistema";
                             description: "Visibilidade do ícone na bandeja do sistema; o Kage continua rodando com o ícone oculto.";
-                            soon: true;
                             ToggleSwitch {
-                                checked: true;
-                                enabled: false;
+                                checked <=> root.tray-icon;
+                                toggled(v) => { root.set-tray-icon(v); }
                             }
                         }
                         SettingsCard {

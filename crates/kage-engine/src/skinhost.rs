@@ -455,7 +455,7 @@ fn set_alpha(hwnd: HWND, alpha: f32) {
 /// Menu do clique direito escuro ou claro, como o tema escolhido no Kage ("Sistema" segue o modo
 /// de apps do Windows). O Windows 10 só oferece isso por funções da uxtheme sem nome, pelo número
 /// (133, 135 e 136, do 1903 em diante); se não existirem, o menu fica no padrão.
-fn theme_menus(owner: HWND) {
+pub(crate) fn theme_menus(owner: HWND) {
     type AllowDarkModeForWindow = unsafe extern "system" fn(HWND, i32) -> i32;
     type SetPreferredAppMode = unsafe extern "system" fn(i32) -> i32;
     type FlushMenuThemes = unsafe extern "system" fn();
@@ -727,13 +727,13 @@ fn checked(on: bool) -> MENU_ITEM_FLAGS {
     if on { MF_STRING | MF_CHECKED } else { MF_STRING }
 }
 
-fn append(menu: HMENU, flags: MENU_ITEM_FLAGS, id: usize, text: &str) {
+pub(crate) fn append(menu: HMENU, flags: MENU_ITEM_FLAGS, id: usize, text: &str) {
     unsafe {
         let _ = AppendMenuW(menu, flags, id, &HSTRING::from(text));
     }
 }
 
-fn separator(menu: HMENU) {
+pub(crate) fn separator(menu: HMENU) {
     unsafe {
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
     }

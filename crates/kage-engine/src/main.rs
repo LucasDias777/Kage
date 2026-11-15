@@ -34,6 +34,7 @@ mod skins;
 mod surface;
 mod sysinfo;
 mod thumb;
+mod tray;
 mod video;
 mod watch;
 
@@ -331,11 +332,13 @@ fn run_from_config() -> windows_core::Result<()> {
         unsafe {
             let _ = SetConsoleCtrlHandler(Some(on_ctrl_c), true);
         }
-        let _window = watch::SystemWindow::create()?;
+        let window = watch::SystemWindow::create()?;
         log(&format!("Motor do Kage iniciado. Configuração: {}", kage_core::config_path().display()));
         let gpu = gpu::Gpu::new()?;
         let mut host = skinhost::SkinHost::new(true)?;
         let mut config = load_config();
+        tray::init(window.hwnd());
+        tray::set_visible(config.general.tray_icon);
         loop {
             let monitors = monitors::enumerate();
             host.apply(&skin_list(&config), &config.skins.favorites, &monitors);
@@ -344,6 +347,7 @@ fn run_from_config() -> windows_core::Result<()> {
             let outcome = {
                 let mut on_reload = |host: &mut skinhost::SkinHost| {
                     let next = load_config();
+                    tray::set_visible(next.general.tray_icon);
                     let monitors = monitors::enumerate();
                     host.apply(&skin_list(&next), &next.skins.favorites, &monitors);
                     let rebuild = from_config::args(&next, &monitors) != scene;
@@ -372,6 +376,7 @@ fn run_from_config() -> windows_core::Result<()> {
             }
             log("Configuração mudou; refazendo a cena do wallpaper.");
         }
+        tray::remove();
         log("Motor do Kage encerrado.");
         Ok(())
     })
@@ -593,7 +598,9 @@ fn play(
 
         // 2. Aplica nas fontes: uma fonte toca se algum monitor dela está tocando.
         for (i, source) in sources.iter_mut().enumerate() {
+            // "Pausar wallpapers" da bandeja vale para todas as telas, até tirar a marca.
             let wanted = !release_now
+                && !tray::user_paused()
                 && surfaces.iter().enumerate().any(|(j, s)| s.source == i && reasons[j].is_none());
             match source {
                 Source::Video(video) => {

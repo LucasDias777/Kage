@@ -9,6 +9,8 @@ fn main() {
         res.set_icon("../../assets/brand/kage.ico");
         res.set("FileDescription", "Kage");
         res.set("ProductName", "Kage");
+        // Fornecedor na aba Inicializar do Gerenciador de Tarefas e nas propriedades do arquivo.
+        res.set("CompanyName", "Lucas Dias");
         res.compile().expect("falha ao gravar o ícone e o nome no executável");
     }
 }

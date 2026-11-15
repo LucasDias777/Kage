@@ -6,6 +6,7 @@
 //! recarrega na hora, sem ficar conferindo o arquivo.
 
 mod config;
+pub mod release;
 
 pub use config::*;
 
@@ -17,6 +18,40 @@ pub const ENGINE_WINDOW_CLASS: &str = "KageSystemEvents";
 pub const MSG_RELOAD: u32 = 0x8000 + 16;
 /// WM_APP + 17: encerrar o motor.
 pub const MSG_QUIT: u32 = 0x8000 + 17;
+
+/// Propriedade (SetPropW) que marca a janela do Kage, para o motor e uma segunda cópia a acharem.
+pub const UI_WINDOW_PROP: &str = "KageJanela";
+/// Mensagem registrada (RegisterWindowMessageW) que pede à janela aberta para mostrar uma tela.
+pub const UI_COMMAND_MESSAGE: &str = "KageJanelaComando";
+
+/// Telas que a bandeja (ou uma segunda abertura) pede à janela. Na linha de comando:
+/// `kage.exe --abrir atualizacoes`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum UiCommand {
+    Show = 0,
+    Updates = 1,
+    Customize = 2,
+    News = 3,
+}
+
+impl UiCommand {
+    pub fn arg(self) -> &'static str {
+        match self {
+            Self::Show => "inicio",
+            Self::Updates => "atualizacoes",
+            Self::Customize => "customizar",
+            Self::News => "novidades",
+        }
+    }
+
+    pub fn from_arg(arg: &str) -> Option<Self> {
+        [Self::Show, Self::Updates, Self::Customize, Self::News].into_iter().find(|c| c.arg() == arg)
+    }
+
+    pub fn from_code(code: usize) -> Option<Self> {
+        [Self::Show, Self::Updates, Self::Customize, Self::News].into_iter().find(|c| *c as usize == code)
+    }
+}
 
 /// `%APPDATA%\Kage`.
 pub fn data_dir() -> PathBuf {

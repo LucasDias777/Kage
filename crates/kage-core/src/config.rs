@@ -339,7 +339,9 @@ pub struct General {
     pub backdrop: Backdrop,
     /// Imagens de fundo que o usuário já abriu, para escolher de novo.
     pub backdrops: Vec<PathBuf>,
-    /// Procurar versão nova no GitHub ao abrir a janela.
+    /// Ícone na bandeja do sistema (o motor continua rodando sem ele).
+    pub tray_icon: bool,
+    /// Procurar versão nova no GitHub (janela ao abrir, motor de tempos em tempos).
     pub check_updates: bool,
     /// Última versão cujas novidades a janela já mostrou.
     pub seen_version: String,
@@ -353,6 +355,7 @@ impl Default for General {
             ask_monitor: true,
             backdrop: Backdrop::Default,
             backdrops: Vec::new(),
+            tray_icon: true,
             check_updates: true,
             seen_version: String::new(),
         }
@@ -548,6 +551,45 @@ impl Config {
         self.screens.iter_mut().for_each(|s| s.wallpaper = None);
         self.shared = None;
     }
+
+    /// O wallpaper na tela agora: o de Span e Duplicar, ou o do primeiro monitor que tem um.
+    pub fn current_wallpaper(&self) -> Option<&str> {
+        let id = match self.arrangement {
+            Arrangement::PerScreen => self.screens.iter().find_map(|s| s.wallpaper.as_deref()),
+            _ => self.shared.as_deref(),
+        }?;
+        self.wallpaper(id).map(|w| w.id.as_str())
+    }
+
+    /// "Alterar wallpaper" da bandeja: um wallpaper sorteado da biblioteca em cada monitor
+    /// (disposição Tela) ou no de Span e Duplicar, diferente do que estava quando dá.
+    /// `seed` vem do relógio. Sem nada na biblioteca, não muda nada e devolve falso.
+    pub fn random_wallpapers(&mut self, devices: &[String], seed: u64) -> bool {
+        if self.library.is_empty() {
+            return false;
+        }
+        let mut state = seed | 1;
+        let mut pick = |current: Option<&str>| -> String {
+            // xorshift64: basta para sortear sem depender de crate.
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            let others: Vec<&Wallpaper> = self.library.iter().filter(|w| Some(w.id.as_str()) != current).collect();
+            let pool = if others.is_empty() { self.library.iter().collect() } else { others };
+            pool[(state % pool.len() as u64) as usize].id.clone()
+        };
+        match self.arrangement {
+            Arrangement::PerScreen => {
+                let chosen: Vec<(String, String)> =
+                    devices.iter().map(|d| (d.clone(), pick(self.screen_wallpaper(d)))).collect();
+                for (device, id) in chosen {
+                    self.assign(&device, Some(&id));
+                }
+            }
+            _ => self.shared = Some(pick(self.shared.as_deref())),
+        }
+        true
+    }
 }
 
 /// Identificador estável a partir do caminho (o mesmo arquivo não entra duas vezes).
@@ -560,6 +602,28 @@ pub fn wallpaper_id(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn random_wallpaper_changes_what_is_on_screen() {
+        let mut cfg = Config::default();
+        assert!(!cfg.random_wallpapers(&["A".into()], 7), "biblioteca vazia não muda nada");
+        let a = cfg.add_file(Path::new(r"C:a.mp4")).unwrap().id.clone();
+        let b = cfg.add_file(Path::new(r"C:.mp4")).unwrap().id.clone();
+        cfg.assign("A", Some(&a));
+        for seed in 1..20 {
+            cfg.assign("A", Some(&a));
+            cfg.random_wallpapers(&["A".into(), "B".into()], seed);
+            assert_eq!(cfg.screen_wallpaper("A"), Some(b.as_str()), "sempre um diferente do que estava");
+            assert!(cfg.screen_wallpaper("B").is_some(), "monitor sem wallpaper também ganha um");
+        }
+        assert_eq!(cfg.current_wallpaper(), Some(b.as_str()));
+        cfg.arrangement = Arrangement::Duplicate;
+        cfg.shared = Some(b.clone());
+        cfg.random_wallpapers(&[], 3);
+        assert_eq!(cfg.shared.as_deref(), Some(a.as_str()));
+        cfg.clear_wallpapers();
+        assert_eq!(cfg.current_wallpaper(), None);
+    }
 
     #[test]
     fn a_file_saved_with_bom_still_opens() {

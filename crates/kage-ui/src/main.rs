@@ -10,6 +10,7 @@ mod engine;
 mod frame;
 mod monitors;
 mod notes;
+mod single;
 mod startup;
 mod theme;
 mod update;
@@ -72,6 +73,11 @@ const LAYERS: [SkinLayer; 5] = [SkinLayer::Topmost, SkinLayer::Top, SkinLayer::N
 const HOVERS: [SkinHover; 4] = [SkinHover::None, SkinHover::Hide, SkinHover::FadeIn, SkinHover::FadeOut];
 
 fn main() -> Result<(), slint::PlatformError> {
+    // Já aberta (pelo Menu Iniciar ou pela bandeja): a janela que existe aparece com o pedido.
+    let command = single::command_from_args();
+    if single::hand_over(command) {
+        return Ok(());
+    }
     let ui = App::new()?;
     ui.set_version(env!("CARGO_PKG_VERSION").into());
     let state: Shared = Rc::new(RefCell::new(load_state()));
@@ -92,6 +98,7 @@ fn main() -> Result<(), slint::PlatformError> {
     update::clean_leftovers();
     ui.set_release_notes(release_notes_model());
     show_news_once(&ui, &state);
+    run_ui_command(&ui, &state, &toast_timer, command);
     let first_check = Timer::default();
     if state.borrow().config.general.check_updates {
         let weak = ui.as_weak();
@@ -129,6 +136,7 @@ fn main() -> Result<(), slint::PlatformError> {
     // A janela do winit só existe depois que o laço de eventos começa: aí entram a sombra e o
     // aviso de maximizado (Win+seta, arrastar até o topo) para o ícone do botão acompanhar.
     let weak = ui.as_weak();
+    let (single_state, single_timer) = (state.clone(), toast_timer.clone());
     let _ = slint::spawn_local(async move {
         use slint::winit_030::{EventResult, WinitWindowAccessor, winit::event::WindowEvent};
         let Some(ui) = weak.upgrade() else { return };
@@ -137,6 +145,12 @@ fn main() -> Result<(), slint::PlatformError> {
         }
         frame::add_shadow(ui.window());
         ui.set_is_maximized(ui.window().is_maximized());
+        let commands = (ui.as_weak(), single_state.clone(), single_timer.clone());
+        single::install(ui.window(), move |command| {
+            if let Some(ui) = commands.0.upgrade() {
+                run_ui_command(&ui, &commands.1, &commands.2, command);
+            }
+        });
         let weak = ui.as_weak();
         ui.window().on_winit_window_event(move |window, event| {
             if matches!(event, WindowEvent::Resized(_))
@@ -642,6 +656,7 @@ fn refresh(ui: &App, s: &State) {
     // Geral e sistema
     ui.set_start_with_windows(startup::is_enabled());
     ui.set_check_updates(cfg.general.check_updates);
+    ui.set_tray_icon(cfg.general.tray_icon);
     ui.set_data_path(kage_core::data_dir().display().to_string().into());
 }
 
@@ -1747,7 +1762,41 @@ fn time_label() -> String {
     format!("{:02}:{:02}", t.wHour, t.wMinute)
 }
 
+/// Pedido da bandeja (ou da linha de comando): qual tela abrir.
+fn run_ui_command(ui: &App, state: &Shared, timer: &Rc<Timer>, command: kage_core::UiCommand) {
+    use kage_core::UiCommand;
+    match command {
+        UiCommand::Show => {}
+        UiCommand::Updates => {
+            ui.set_dialog(10);
+            start_update_check(ui, timer, true);
+        }
+        UiCommand::Customize => {
+            // A bandeja pode ter trocado o wallpaper agora há pouco: lê do disco.
+            let on_screen = Config::load_from(&kage_core::config_path())
+                .ok()
+                .and_then(|c| c.current_wallpaper().map(str::to_string))
+                .filter(|id| state.borrow().config.wallpaper(id).is_some());
+            match on_screen {
+                Some(id) => ui.invoke_customize_wallpaper(id.into()),
+                None => show_toast(ui, timer, "Nenhum wallpaper na tela para customizar"),
+            }
+        }
+        UiCommand::News => ui.set_dialog(11),
+    }
+}
+
 fn wire_updates(ui: &App, state: &Shared, timer: &Rc<Timer>) {
+    {
+        let weak = ui.as_weak();
+        let state = state.clone();
+        let timer = timer.clone();
+        ui.on_set_tray_icon(move |enabled| {
+            let Some(ui) = weak.upgrade() else { return };
+            state.borrow_mut().config.general.tray_icon = enabled;
+            commit(&ui, &state, &timer, if enabled { "Ícone na bandeja do sistema" } else { "Ícone fora da bandeja; o Kage continua rodando" });
+        });
+    }
     {
         let weak = ui.as_weak();
         let timer = timer.clone();

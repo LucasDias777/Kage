@@ -49,6 +49,16 @@ pub fn quit_requested() -> bool {
     QUIT.load(Ordering::SeqCst)
 }
 
+/// O menu da bandeja mudou a configuração: recarregar como se a janela tivesse pedido.
+pub fn request_reload() {
+    RELOAD.store(true, Ordering::SeqCst);
+}
+
+/// "Sair" do menu da bandeja.
+pub fn request_quit() {
+    QUIT.store(true, Ordering::SeqCst);
+}
+
 const EVENT_SYSTEM_FOREGROUND: u32 = 0x0003;
 const EVENT_SYSTEM_MOVESIZEEND: u32 = 0x000B;
 const EVENT_SYSTEM_MINIMIZESTART: u32 = 0x0016;
@@ -106,6 +116,10 @@ impl SystemWindow {
             let _ = WTSRegisterSessionNotification(hwnd, NOTIFY_FOR_THIS_SESSION);
         }
         Ok(Self { hwnd })
+    }
+
+    pub fn hwnd(&self) -> HWND {
+        self.hwnd
     }
 }
 
@@ -358,6 +372,9 @@ fn create_message_window() -> Result<HWND> {
 }
 
 unsafe extern "system" fn system_events_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if crate::tray::handle(msg, lparam) {
+        return LRESULT(0);
+    }
     match msg {
         WM_WTSSESSION_CHANGE => {
             match wparam.0 {
