@@ -18,7 +18,7 @@
 <p>
   <img alt="Windows 10 e 11" src="https://img.shields.io/badge/Windows-10_|_11-0078D4?style=for-the-badge" />
   <img alt="Rust" src="https://img.shields.io/badge/Rust-2024-CE422B?style=for-the-badge&logo=rust&logoColor=white" />
-  <img alt="Versão 0.1.1" src="https://img.shields.io/badge/Vers%C3%A3o-0.1.1-00c46a?style=for-the-badge" />
+  <img alt="Versão 0.1.2" src="https://img.shields.io/badge/Vers%C3%A3o-0.1.2-00c46a?style=for-the-badge" />
   <img alt="Feito com Slint" src="https://img.shields.io/badge/Feito_com-Slint-2379F4?style=for-the-badge" />
 </p>
 
@@ -72,6 +72,7 @@
 | **Pausa inteligente** | Para quando um jogo ou app está em tela cheia, quando outra janela está em foco (se você quiser), na bateria, na economia de bateria e na área de trabalho remota. Regras por app, por tela ou em todas as telas |
 | **Memória devolvida** | Pausado por alguns minutos, o motor solta o decodificador e a memória de vídeo, e volta do ponto onde parou |
 | **Skins na área de trabalho** | Relógio, data, CPU, memória, disco, rede, player de música e mais, cada skin numa janela própria: arrastar, travar, transparência, camadas (sempre visível, normal, no desktop), clicar através, sumir ao passar o mouse e escolha de monitor |
+| **Relógio do Kage** | Skin própria que já vem com o Kage: o dia da semana em letras largas, na fonte Kage Display (desenhada para o Kage), a data e o horário com um enfeite em volta. Numa instalação nova, aparece ligada no centro da tela principal |
 | **Tocando agora** | A skin do player mostra a música que está tocando no Windows (Spotify, navegador, qualquer app com os controles de mídia do sistema), com tocar, pausar, avançar, voltar e barra de tempo clicável |
 | **Janela leve** | Biblioteca, skins e configurações numa janela própria, com barra de título do Kage, tema claro e escuro e fundo personalizado. Fechada, não gasta nada: quem fica rodando é só o motor |
 | **Ícone na bandeja** | Dois cliques abrem a janela. O clique direito traz Abrir o Kage, Fechar todos os wallpapers, Pausar wallpapers (o ícone fica cinza), Alterar wallpaper (sorteia outro da biblioteca), Customizar wallpaper, o estado da atualização, Relatar um problema e Sair. Dá para esconder o ícone em Configurações › Geral |
@@ -117,6 +118,12 @@ O Kage lê skins no formato `.ini` usado pelo Rainmeter e desenha tudo sozinho, 
 | Cliques, duplo clique, rodinha e as ações `SetVariable`, `SetOption`, `Show/Hide/ToggleMeter`, `CommandMeasure`, `Toggle/Activate/DeactivateConfig`, `Refresh` e abrir programas | |
 
 Para proteger o desempenho, ficam ligadas **até 3 skins ao mesmo tempo**, somando todas as telas. Os arquivos das skins nunca são reescritos pelo Kage: posição, transparência e as outras opções ficam na configuração do próprio Kage.
+
+### Relógio do Kage
+
+O Kage traz uma skin própria, o **Relógio**, que ele mesmo instala em `Kage\Relógio`, dentro da pasta de skins. Cada vez que a janela abre, as fontes do Relógio voltam às do Kage, mas o arquivo `Relógio.ini` não é mexido depois de criado. Para mudar o tamanho, clique com o botão direito no Relógio, vá em **Editar skin** e troque a `Escala` e o `EspacoDia` juntos: `1.30` e `12.26` numa tela de 2560x1440, `1.06` e `10` numa de 1920x1080. Na primeira instalação, o Kage escolhe um dos dois pela tela principal.
+
+O dia da semana usa a **Kage Display**, uma fonte desenhada para o Kage e gerada por `tools/fonte/gerar_fonte.py`. O horário e a data usam a **Quicksand**.
 
 ## Leveza
 
@@ -180,7 +187,10 @@ Kage/
 │   ├── kage-skins/     leitor de skins .ini: variáveis, fórmulas, medidas e medidores
 │   └── kage-ui/        janela (Slint): biblioteca, skins, configurações e atualização
 │       └── ui/         telas .slint e ícones
-├── assets/brand/       logo e ícone do Kage
+├── assets/
+│   ├── brand/          logo e ícone do Kage
+│   └── skins/Kage/     o Relógio do Kage e as fontes dele (vão dentro do .exe)
+├── tools/fonte/        gerador da fonte Kage Display
 └── docs/imagens/       imagens deste README
 ```
 
@@ -236,4 +246,6 @@ O Kage é distribuído sob a **[PolyForm Noncommercial 1.0.0](LICENSE)**: você 
 - **[Slint](https://slint.dev)**, a biblioteca da janela, usada sob a licença Royalty-free para aplicativos de desktop.
 - **[Lucide](https://lucide.dev)**, os ícones da janela, sob a licença ISC (texto em `crates/kage-ui/ui/icons/LICENSE-lucide.txt`).
 - **[windows-rs](https://github.com/microsoft/windows-rs)**, **[serde](https://serde.rs)**, **[regex](https://github.com/rust-lang/regex)** e **[rfd](https://github.com/PolyMeilex/rfd)**, sob as licenças MIT ou Apache 2.0.
+- **Kage Display**, a fonte do Relógio, faz parte do Kage e segue a mesma licença.
+- **[Quicksand](https://github.com/andrew-paglinawan/QuicksandFamily)**, de Andrew Paglinawan, a fonte do horário e da data do Relógio, sob a SIL Open Font License 1.1 (texto em `assets/skins/Kage/OFL-Quicksand.txt`).
 - As skins de exemplo nas imagens deste README são dos seus autores e não fazem parte do Kage.

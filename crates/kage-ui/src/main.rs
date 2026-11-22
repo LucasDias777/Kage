@@ -220,10 +220,15 @@ fn load_config_or_set_aside() -> Config {
 }
 
 fn load_state() -> State {
+    let first_run = !kage_core::config_path().exists();
     let mut config = load_config_or_set_aside();
     let setup = kage_skins::rainmeter::default_ini().and_then(|p| kage_skins::rainmeter::read(&p).ok());
     let skins_path = setup.as_ref().map(|s| s.skins_path.clone()).unwrap_or_else(default_skins_path);
     let monitors = monitors::enumerate();
+    let primary = monitors.iter().find(|m| m.primary).or(monitors.first());
+    // O Relógio do Kage vai para a pasta de skins (ou tem as fontes atualizadas) a cada abertura.
+    let small_screen = primary.is_some_and(|m| m.rect.bottom - m.rect.top < 1440);
+    let _ = kage_skins::bundled::install(&skins_path, small_screen);
     // Primeira vez: já traz as skins ativas do Rainmeter nas mesmas posições; elas ficam
     // desligadas até o usuário ligar o desenho das skins.
     if config.skins.items.is_empty()
@@ -235,6 +240,22 @@ fn load_state() -> State {
             .take(MAX_ACTIVE_SKINS)
             .map(|a| entry_from_rainmeter(a, &monitors))
             .collect();
+    }
+    // Primeira vez sem skins do Rainmeter: o Relógio já aparece, centralizado na tela principal.
+    let clock_ini = kage_skins::bundled::clock_ini(&skins_path);
+    if first_run && config.skins.items.is_empty() && clock_ini.is_file() {
+        config.skins.items.push(SkinEntry {
+            id: kage_core::new_skin_id(),
+            config: kage_skins::bundled::CLOCK_CONFIG.to_string(),
+            ini: clock_ini,
+            active: true,
+            anchor: SkinAnchor::Centered,
+            monitor: primary.map(|m| m.device.clone()),
+            height_percent: 35.0,
+            ..Default::default()
+        });
+        config.skins.enabled = true;
+        let _ = config.save();
     }
     let selected = monitors.iter().position(|m| m.primary).unwrap_or(0);
     let groups = skin_groups(kage_skins::rainmeter::installed(&skins_path));

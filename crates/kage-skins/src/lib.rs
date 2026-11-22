@@ -4,6 +4,7 @@
 //! variáveis e fórmulas), atualiza as medidas e monta um [`Frame`], a lista de textos, imagens e
 //! formas com posição e estilo. O motor do Kage desenha esse frame na GPU.
 
+pub mod bundled;
 mod color;
 mod draw;
 pub mod formula;

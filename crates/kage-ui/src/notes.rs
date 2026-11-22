@@ -10,6 +10,17 @@ pub struct Note {
 
 pub const NOTES: &[Note] = &[
     Note {
+        version: "0.1.2",
+        date: "22 de novembro de 2026",
+        title: "Relógio do Kage",
+        items: &[
+            "O Kage agora traz uma skin própria, o Relógio: o dia da semana em letras largas, a data e o horário com um enfeite em volta.",
+            "O dia da semana usa a Kage Display, uma fonte desenhada para o Kage. O horário e a data usam a Quicksand.",
+            "Numa instalação nova, o Relógio já aparece no centro da tela principal. Quem já usa o Kage encontra o Relógio na aba Skins, pronto para ligar.",
+            "Para mudar o tamanho, use Editar skin no clique direito do Relógio e troque a Escala e o EspacoDia (1.30 e 12.26 numa tela de 2560x1440, 1.06 e 10 numa de 1920x1080).",
+        ],
+    },
+    Note {
         version: "0.1.1",
         date: "14 de novembro de 2026",
         title: "Ícone na bandeja",
