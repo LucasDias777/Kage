@@ -71,6 +71,9 @@ const RELEASE_CHOICES: [Option<u64>; 6] = [None, Some(30), Some(60), Some(120), 
 /// Camadas e "passar o mouse" na ordem das listas da janela.
 const LAYERS: [SkinLayer; 5] = [SkinLayer::Topmost, SkinLayer::Top, SkinLayer::Normal, SkinLayer::Bottom, SkinLayer::Desktop];
 const HOVERS: [SkinHover; 4] = [SkinHover::None, SkinHover::Hide, SkinHover::FadeIn, SkinHover::FadeOut];
+/// Altura do centro de uma skin recém-ligada, em percentual da altura da tela. Vale igual para o
+/// Relógio que já vem ligado e para a skin ligada pela aba Skins.
+const NEW_SKIN_HEIGHT: f32 = 35.0;
 
 fn main() -> Result<(), slint::PlatformError> {
     // Já aberta (pelo Menu Iniciar ou pela bandeja): a janela que existe aparece com o pedido.
@@ -251,7 +254,7 @@ fn load_state() -> State {
             active: true,
             anchor: SkinAnchor::Centered,
             monitor: primary.map(|m| m.device.clone()),
-            height_percent: 35.0,
+            height_percent: NEW_SKIN_HEIGHT,
             ..Default::default()
         });
         config.skins.enabled = true;
@@ -1350,7 +1353,7 @@ fn wire(ui: &App, state: &Shared, timer: &Rc<Timer>) {
                             active: true,
                             anchor: SkinAnchor::Centered,
                             monitor: Some(monitor.device.clone()),
-                            height_percent: 30.0,
+                            height_percent: NEW_SKIN_HEIGHT,
                             ..Default::default()
                         }),
                     }

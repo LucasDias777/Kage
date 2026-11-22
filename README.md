@@ -18,7 +18,7 @@
 <p>
   <img alt="Windows 10 e 11" src="https://img.shields.io/badge/Windows-10_|_11-0078D4?style=for-the-badge" />
   <img alt="Rust" src="https://img.shields.io/badge/Rust-2024-CE422B?style=for-the-badge&logo=rust&logoColor=white" />
-  <img alt="Versão 0.1.2" src="https://img.shields.io/badge/Vers%C3%A3o-0.1.2-00c46a?style=for-the-badge" />
+  <img alt="Versão 0.1.3" src="https://img.shields.io/badge/Vers%C3%A3o-0.1.3-00c46a?style=for-the-badge" />
   <img alt="Feito com Slint" src="https://img.shields.io/badge/Feito_com-Slint-2379F4?style=for-the-badge" />
 </p>
 

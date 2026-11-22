@@ -10,6 +10,14 @@ pub struct Note {
 
 pub const NOTES: &[Note] = &[
     Note {
+        version: "0.1.3",
+        date: "22 de novembro de 2026",
+        title: "Skin nova no mesmo lugar",
+        items: &[
+            "A skin ligada pela aba Skins aparece na mesma altura do Relógio que já vem ligado: centralizada, a 35% da altura da tela.",
+        ],
+    },
+    Note {
         version: "0.1.2",
         date: "22 de novembro de 2026",
         title: "Relógio do Kage",
