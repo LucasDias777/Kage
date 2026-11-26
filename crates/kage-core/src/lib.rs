@@ -6,9 +6,11 @@
 //! recarrega na hora, sem ficar conferindo o arquivo.
 
 mod config;
+mod monitor_id;
 pub mod release;
 
 pub use config::*;
+pub use monitor_id::*;
 
 use std::path::PathBuf;
 

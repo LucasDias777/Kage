@@ -12,5 +12,5 @@ windows-future = "0.3"
 
 [dependencies.windows]
 version = "0.62"
-# Só o HTTP do WinRT, para conferir a última versão publicada no GitHub.
-features = ["Foundation", "Web_Http", "Web_Http_Headers"]
+# O HTTP do WinRT, para conferir a última versão publicada no GitHub, e o modelo de cada monitor.
+features = ["Foundation", "Web_Http", "Web_Http_Headers", "Win32_Foundation", "Win32_Graphics_Gdi"]

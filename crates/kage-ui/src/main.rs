@@ -228,6 +228,11 @@ fn load_state() -> State {
     let setup = kage_skins::rainmeter::default_ini().and_then(|p| kage_skins::rainmeter::read(&p).ok());
     let skins_path = setup.as_ref().map(|s| s.skins_path.clone()).unwrap_or_else(default_skins_path);
     let monitors = monitors::enumerate();
+    // Até a 0.1.3 o config guardava o monitor pelo nome do Windows (\\.\DISPLAY1), que muda numa
+    // troca de driver de vídeo: passa para o modelo da tela.
+    if config.adopt_monitor_ids(&monitors::id_pairs(&monitors)) {
+        let _ = config.save();
+    }
     let primary = monitors.iter().find(|m| m.primary).or(monitors.first());
     // O Relógio do Kage vai para a pasta de skins (ou tem as fontes atualizadas) a cada abertura.
     let small_screen = primary.is_some_and(|m| m.rect.bottom - m.rect.top < 1440);

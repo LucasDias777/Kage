@@ -147,7 +147,9 @@ impl Default for Performance {
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ScreenAssignment {
-    /// Nome do monitor no Windows, como `\\.\DISPLAY1`.
+    /// Identificação do monitor ([`crate::monitor_ids`]): o modelo da tela, como `DELA222`. Até a
+    /// versão 0.1.3 era o nome do Windows (`\\.\DISPLAY1`), que muda numa troca de driver de vídeo;
+    /// [`Config::adopt_monitor_ids`] converte.
     pub device: String,
     pub wallpaper: Option<String>,
 }
@@ -231,7 +233,7 @@ pub struct SkinEntry {
     pub y: f32,
     pub active: bool,
     pub anchor: SkinAnchor,
-    /// Monitor da skin (`\\.\DISPLAY1`); sem monitor, o principal.
+    /// Monitor da skin, pela mesma identificação de [`ScreenAssignment::device`]; sem monitor, o principal.
     pub monitor: Option<String>,
     /// Altura do centro da skin, em percentual da altura do monitor (50 = centro).
     pub height_percent: f32,
@@ -523,6 +525,33 @@ impl Config {
         self.screens.iter().find(|s| s.device.eq_ignore_ascii_case(device))?.wallpaper.as_deref()
     }
 
+    /// Passa o que foi gravado pelo nome do Windows (`\\.\DISPLAY1`) para a identificação estável
+    /// do monitor, nos monitores conectados agora: `pairs` traz (nome do Windows, identificação).
+    /// Se o monitor já tem escolha pela identificação, ela vale e a antiga sai. Devolve se mudou.
+    pub fn adopt_monitor_ids(&mut self, pairs: &[(String, String)]) -> bool {
+        let mut changed = false;
+        for (name, id) in pairs {
+            if name.eq_ignore_ascii_case(id) {
+                continue;
+            }
+            if let Some(at) = self.screens.iter().position(|s| s.device.eq_ignore_ascii_case(name)) {
+                if self.screens.iter().any(|s| s.device.eq_ignore_ascii_case(id)) {
+                    self.screens.remove(at);
+                } else {
+                    self.screens[at].device = id.clone();
+                }
+                changed = true;
+            }
+            for entry in &mut self.skins.items {
+                if entry.monitor.as_deref().is_some_and(|m| m.eq_ignore_ascii_case(name)) {
+                    entry.monitor = Some(id.clone());
+                    changed = true;
+                }
+            }
+        }
+        changed
+    }
+
     /// Põe o wallpaper num monitor (disposição Tela).
     pub fn assign(&mut self, device: &str, id: Option<&str>) {
         let id = id.map(str::to_string);
@@ -758,6 +787,33 @@ mod tests {
         assert_eq!(back, cfg);
         assert!(!back.library[0].look.colors_untouched());
         assert!(back.is_favorite("mond\\clock"));
+    }
+
+    #[test]
+    fn windows_names_become_stable_monitor_ids() {
+        let mut cfg = Config::default();
+        let a = cfg.add_file(Path::new(r"C:\a.mp4")).unwrap().id.clone();
+        let b = cfg.add_file(Path::new(r"C:\b.mp4")).unwrap().id.clone();
+        // Como a 0.1.3 deixou o config depois da troca de driver: nomes velhos e novos.
+        cfg.assign(r"\\.\DISPLAY1", Some(&a));
+        cfg.assign(r"\\.\DISPLAY6", Some(&a));
+        cfg.assign(r"\\.\DISPLAY7", Some(&b));
+        cfg.assign("AOC2402", Some(&a));
+        cfg.skins.items.push(SkinEntry { id: "s1".into(), monitor: Some(r"\\.\display6".into()), ..Default::default() });
+        cfg.skins.items.push(SkinEntry { id: "s2".into(), monitor: Some(r"\\.\DISPLAY1".into()), ..Default::default() });
+
+        let pairs = [(r"\\.\DISPLAY6".to_string(), "DELA222".to_string()), (r"\\.\DISPLAY7".to_string(), "AOC2402".to_string())];
+        assert!(cfg.adopt_monitor_ids(&pairs));
+        assert_eq!(cfg.screen_wallpaper("DELA222"), Some(a.as_str()));
+        assert_eq!(cfg.screen_wallpaper("AOC2402"), Some(a.as_str()), "a escolha já feita pela identificação vale");
+        assert_eq!(cfg.screen_wallpaper(r"\\.\DISPLAY7"), None, "o nome velho sai");
+        assert_eq!(cfg.screen_wallpaper(r"\\.\DISPLAY1"), Some(a.as_str()), "monitor que não está conectado não muda");
+        assert_eq!(cfg.skins.items[0].monitor.as_deref(), Some("DELA222"));
+        assert_eq!(cfg.skins.items[1].monitor.as_deref(), Some(r"\\.\DISPLAY1"));
+        assert!(!cfg.adopt_monitor_ids(&pairs), "a segunda vez não muda nada");
+
+        // Monitor sem modelo fica com o nome do Windows, sem mudança.
+        assert!(!cfg.adopt_monitor_ids(&[(r"\\.\DISPLAY1".to_string(), r"\\.\DISPLAY1".to_string())]));
     }
 
     #[test]

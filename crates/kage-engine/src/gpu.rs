@@ -72,6 +72,13 @@ impl Gpu {
         }
     }
 
+    /// Verdadeiro quando o driver de vídeo foi trocado, atualizado ou reiniciado
+    /// (DXGI_ERROR_DEVICE_REMOVED, 0x887A0005): nada criado neste dispositivo volta a funcionar,
+    /// e a GPU precisa ser criada de novo.
+    pub fn is_lost(&self) -> bool {
+        unsafe { self.device.GetDeviceRemovedReason().is_err() }
+    }
+
     /// VRAM que este processo usa agora, em MB, como o driver informa.
     pub fn video_memory_mb(&self) -> u64 {
         unsafe {

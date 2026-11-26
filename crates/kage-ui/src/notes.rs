@@ -10,6 +10,16 @@ pub struct Note {
 
 pub const NOTES: &[Note] = &[
     Note {
+        version: "0.1.4",
+        date: "25 de novembro de 2026",
+        title: "Volta sozinho depois de trocar o driver de vídeo",
+        items: &[
+            "Atualizar ou reinstalar o driver da placa de vídeo não deixa mais a área de trabalho sem wallpaper: o Kage percebe que a placa reiniciou e volta com o wallpaper e as skins em poucos segundos, sem fechar e abrir nada.",
+            "O wallpaper de cada monitor fica guardado pelo modelo da tela, e não mais pelo número que o Windows dá ao monitor, que muda quando o driver é trocado. Quem já usa o Kage não precisa escolher de novo: a configuração é convertida sozinha.",
+            "Um erro que se repete nas skins entra uma vez só no registro do motor, em vez de encher o arquivo sem parar.",
+        ],
+    },
+    Note {
         version: "0.1.3",
         date: "22 de novembro de 2026",
         title: "Skin nova no mesmo lugar",

@@ -406,7 +406,7 @@ fn monitor_of<'a>(entry: &SkinEntry, monitors: &'a [Monitor]) -> Option<&'a Moni
     entry
         .monitor
         .as_deref()
-        .and_then(|d| monitors.iter().find(|m| m.device_name.eq_ignore_ascii_case(d)))
+        .and_then(|d| monitors.iter().find(|m| m.id.eq_ignore_ascii_case(d) || m.device_name.eq_ignore_ascii_case(d)))
         .or_else(|| monitors.iter().find(|m| m.primary))
         .or(monitors.first())
 }
@@ -880,7 +880,7 @@ impl SkinHost {
         let rect = source.rect();
         let folder = skins_root_for(&source.entry.ini).join(config);
         let ini = if file.is_empty() { first_ini(&folder).unwrap_or_else(|| folder.join("skin.ini")) } else { folder.join(file) };
-        let monitor = source.entry.monitor.clone().or_else(|| monitor_of(&source.entry, &self.monitors).map(|m| m.device_name.clone()));
+        let monitor = source.entry.monitor.clone().or_else(|| monitor_of(&source.entry, &self.monitors).map(|m| m.id.clone()));
         let (layer, source_config) = (source.entry.layer, source.entry.config.clone());
         let (x, y) = (rect.left as f32, (rect.bottom + 8) as f32);
         let result = kage_core::Config::edit_file(&kage_core::config_path(), |c| {
@@ -949,6 +949,17 @@ impl SkinHost {
 
     pub fn len(&self) -> usize {
         self.instances.len()
+    }
+
+    /// A GPU foi refeita (driver de vídeo trocado ou recuperado): o que foi criado na antiga não
+    /// serve mais. Solta as imagens das skins e pede um desenho novo de todas.
+    pub fn release_gpu(&mut self) {
+        self.images = ImageCache::default();
+        let now = Instant::now();
+        for i in &mut self.instances {
+            i.bitmap = None;
+            i.next_update = now;
+        }
     }
 
     fn needs_poll(&self) -> bool {
@@ -1070,7 +1081,7 @@ impl SkinHost {
         let Some(index) = self.instances.iter().position(|i| i.hwnd == hwnd) else { return };
         let Some(rect) = tracked_rect(hwnd) else { return };
         let center = POINT { x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 };
-        let device = self.monitors.iter().find(|m| contains(&m.rect, center)).map(|m| m.device_name.clone());
+        let device = self.monitors.iter().find(|m| contains(&m.rect, center)).map(|m| m.id.clone());
         let i = &mut self.instances[index];
         i.entry.anchor = SkinAnchor::Free;
         i.entry.x = rect.left as f32;
@@ -1239,7 +1250,7 @@ impl SkinHost {
                     entry.x = x.clamp(target.rect.left, (target.rect.right - w).max(target.rect.left)) as f32;
                     entry.y = y.clamp(target.rect.top, (target.rect.bottom - h).max(target.rect.top)) as f32;
                 }
-                entry.monitor = Some(target.device_name.clone());
+                entry.monitor = Some(target.id.clone());
             }
             c if (CMD_LAYER..CMD_ALPHA).contains(&c) => match LAYERS.get((c - CMD_LAYER) as usize) {
                 Some((layer, _)) => entry.layer = *layer,

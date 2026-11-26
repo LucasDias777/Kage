@@ -358,9 +358,14 @@ fn run(command: usize) {
             }
         }
         ID_CHANGE => {
-            let devices: Vec<String> = monitors::enumerate().into_iter().map(|m| m.device_name).collect();
+            let monitors = monitors::enumerate();
+            let pairs = monitors::id_pairs(&monitors);
+            let devices: Vec<String> = monitors.into_iter().map(|m| m.id).collect();
             let seed = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(1);
-            edit_config("Bandeja: wallpaper sorteado", |c| c.random_wallpapers(&devices, seed));
+            edit_config("Bandeja: wallpaper sorteado", |c| {
+                c.adopt_monitor_ids(&pairs);
+                c.random_wallpapers(&devices, seed)
+            });
         }
         ID_CUSTOMIZE => open_ui(UiCommand::Customize),
         ID_UPDATE => {

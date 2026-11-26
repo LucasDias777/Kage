@@ -11,7 +11,10 @@ use windows_core::BOOL;
 pub struct Monitor {
     /// Número exibido ao usuário, a partir de 1, na ordem do Windows (\\.\DISPLAY1, 2...).
     pub number: usize,
+    /// Nome no Windows (`\\.\DISPLAY1`); muda quando o driver de vídeo é trocado.
     pub device_name: String,
+    /// Identificação estável ([`kage_core::monitor_ids`]), pela qual o config guarda cada tela.
+    pub id: String,
     pub rect: RECT,
     pub primary: bool,
 }
@@ -37,10 +40,19 @@ pub fn enumerate() -> Vec<Monitor> {
         );
     }
     list.sort_by_key(|m| display_index(&m.device_name));
-    for (i, m) in list.iter_mut().enumerate() {
+    let ids = kage_core::monitor_ids(
+        &list.iter().map(|m| (m.device_name.clone(), m.rect.left, m.rect.top)).collect::<Vec<_>>(),
+    );
+    for (i, (m, id)) in list.iter_mut().zip(ids).enumerate() {
         m.number = i + 1;
+        m.id = id;
     }
     list
+}
+
+/// (nome do Windows, identificação estável) de cada monitor, para [`kage_core::Config::adopt_monitor_ids`].
+pub fn id_pairs(monitors: &[Monitor]) -> Vec<(String, String)> {
+    monitors.iter().map(|m| (m.device_name.clone(), m.id.clone())).collect()
 }
 
 unsafe extern "system" fn collect(monitor: HMONITOR, _: HDC, _: *mut RECT, data: LPARAM) -> BOOL {
@@ -53,6 +65,7 @@ unsafe extern "system" fn collect(monitor: HMONITOR, _: HDC, _: *mut RECT, data:
         list.push(Monitor {
             number: 0,
             device_name: String::from_utf16_lossy(&info.szDevice[..name_len]),
+            id: String::new(),
             rect: info.monitorInfo.rcMonitor,
             primary: info.monitorInfo.dwFlags & MONITORINFOF_PRIMARY != 0,
         });

@@ -116,7 +116,14 @@ type OnReload<'a> = dyn FnMut(&mut skinhost::SkinHost) -> bool + 'a;
 enum Outcome {
     Reload,
     Quit,
+    /// O driver de vídeo foi trocado ou reiniciado: a GPU precisa ser criada de novo.
+    GpuLost,
 }
+
+/// Espera entre tentativas de criar a GPU de novo enquanto o driver de vídeo termina de instalar.
+const GPU_RETRY: Duration = Duration::from_secs(2);
+/// Pausa depois de um erro das skins, para não tentar de novo sem parar.
+const ERROR_PAUSE: Duration = Duration::from_secs(1);
 
 fn exit_code(result: windows_core::Result<()>) -> ExitCode {
     match result {
@@ -334,13 +341,22 @@ fn run_from_config() -> windows_core::Result<()> {
         }
         let window = watch::SystemWindow::create()?;
         log(&format!("Motor do Kage iniciado. Configuração: {}", kage_core::config_path().display()));
-        let gpu = gpu::Gpu::new()?;
+        let mut gpu = gpu::Gpu::new()?;
         let mut host = skinhost::SkinHost::new(true)?;
         let mut config = load_config();
         tray::init(window.hwnd());
         tray::set_visible(config.general.tray_icon);
         loop {
+            if gpu.is_lost() {
+                match recreate_gpu(&mut host) {
+                    Some(fresh) => gpu = fresh,
+                    None => break,
+                }
+            }
             let monitors = monitors::enumerate();
+            if adopt_monitor_ids(&config, &monitors) {
+                config = load_config();
+            }
             host.apply(&skin_list(&config), &config.skins.favorites, &monitors);
             let scene = from_config::args(&config, &monitors);
             let mut fresh = None;
@@ -357,6 +373,7 @@ fn run_from_config() -> windows_core::Result<()> {
                 match &scene {
                     Some(args) => match play(args, &gpu, &mut host, &mut on_reload) {
                         Ok(outcome) => outcome,
+                        Err(_) if gpu.is_lost() => Outcome::GpuLost,
                         Err(e) => {
                             log(&format!("Erro: {e}"));
                             idle(&gpu, &mut host, &mut on_reload)
@@ -371,10 +388,11 @@ fn run_from_config() -> windows_core::Result<()> {
             if let Some(next) = fresh {
                 config = next;
             }
-            if outcome == Outcome::Quit {
-                break;
+            match outcome {
+                Outcome::Quit => break,
+                Outcome::Reload => log("Configuração mudou; refazendo a cena do wallpaper."),
+                Outcome::GpuLost => {}
             }
-            log("Configuração mudou; refazendo a cena do wallpaper.");
         }
         tray::remove();
         log("Motor do Kage encerrado.");
@@ -382,8 +400,62 @@ fn run_from_config() -> windows_core::Result<()> {
     })
 }
 
+/// Cria a GPU de novo depois que o driver de vídeo foi trocado ou reiniciado. Enquanto o driver
+/// termina de instalar a criação pode falhar: tenta de novo a cada `GPU_RETRY`, atendendo as
+/// mensagens. `None` quando pedem para encerrar no meio.
+fn recreate_gpu(host: &mut skinhost::SkinHost) -> Option<gpu::Gpu> {
+    log("A placa de vídeo reiniciou (driver trocado ou recuperado); refazendo a GPU, o wallpaper e as skins.");
+    host.release_gpu();
+    let mut last_error = None;
+    loop {
+        pump_messages();
+        if !RUNNING.load(Ordering::SeqCst) || watch::quit_requested() {
+            return None;
+        }
+        match gpu::Gpu::new() {
+            Ok(fresh) if !fresh.is_lost() => {
+                log("GPU pronta de novo.");
+                return Some(fresh);
+            }
+            Ok(_) => {}
+            Err(e) => {
+                let message = format!("A GPU ainda não voltou: {e}");
+                if last_error.as_ref() != Some(&message) {
+                    log(&message);
+                    last_error = Some(message);
+                }
+            }
+        }
+        unsafe {
+            MsgWaitForMultipleObjects(None, false, GPU_RETRY.as_millis() as u32, QS_ALLINPUT);
+        }
+    }
+}
+
+/// Grava no config a identificação estável dos monitores no lugar do nome do Windows
+/// (`\\.\DISPLAY1`), que muda numa troca de driver. Verdadeiro quando gravou.
+fn adopt_monitor_ids(config: &kage_core::Config, monitors: &[monitors::Monitor]) -> bool {
+    let pairs = monitors::id_pairs(monitors);
+    if !config.clone().adopt_monitor_ids(&pairs) {
+        return false;
+    }
+    match kage_core::Config::edit_file(&kage_core::config_path(), |c| {
+        c.adopt_monitor_ids(&pairs);
+    }) {
+        Ok(_) => {
+            log("Monitores agora guardados pelo modelo da tela, que não muda com o driver de vídeo.");
+            true
+        }
+        Err(e) => {
+            log(&format!("Não gravou a identificação dos monitores: {e}"));
+            false
+        }
+    }
+}
+
 /// Sem wallpaper: só as skins, até a janela do Kage mandar recarregar ou encerrar.
 fn idle(gpu: &gpu::Gpu, host: &mut skinhost::SkinHost, on_reload: &mut OnReload) -> Outcome {
+    let mut last_error: Option<String> = None;
     loop {
         pump_messages();
         if !RUNNING.load(Ordering::SeqCst) || watch::quit_requested() {
@@ -393,10 +465,24 @@ fn idle(gpu: &gpu::Gpu, host: &mut skinhost::SkinHost, on_reload: &mut OnReload)
             return Outcome::Reload;
         }
         let now = Instant::now();
-        if let Err(e) = host.tick(gpu, now, &[]) {
-            log(&format!("Skins: {e}"));
-        }
-        let wake = host.next_wake(now, &[]).min(now + Duration::from_secs(1));
+        let failed = match host.tick(gpu, now, &[]) {
+            Ok(()) => {
+                last_error = None;
+                false
+            }
+            Err(_) if gpu.is_lost() => return Outcome::GpuLost,
+            Err(e) => {
+                // O mesmo erro uma vez só no log, e uma pausa antes de tentar de novo: a skin que
+                // falhou continua pendente e, sem a pausa, o laço giraria sem parar.
+                let message = format!("Skins: {e}");
+                if last_error.as_ref() != Some(&message) {
+                    log(&message);
+                    last_error = Some(message);
+                }
+                true
+            }
+        };
+        let wake = if failed { now + ERROR_PAUSE } else { host.next_wake(now, &[]).min(now + Duration::from_secs(1)) };
         let timeout = wake.saturating_duration_since(Instant::now()).as_millis() as u32;
         unsafe {
             MsgWaitForMultipleObjects(None, false, timeout, QS_ALLINPUT);
@@ -441,9 +527,10 @@ fn play(
     let all = monitors::enumerate();
     for m in &all {
         log(&format!(
-            "Monitor {}: {} {}x{}{}",
+            "Monitor {}: {} ({}) {}x{}{}",
             m.number,
             m.device_name,
+            m.id,
             m.width(),
             m.height(),
             if m.primary { " (principal)" } else { "" }

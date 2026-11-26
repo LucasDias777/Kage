@@ -19,9 +19,13 @@ pub fn args(config: &Config, monitors: &[Monitor]) -> Option<Args> {
         kage_core::Arrangement::Duplicate => Arrangement::Duplicate(path_of(config.shared.as_deref())?),
         kage_core::Arrangement::Span => Arrangement::Span(path_of(config.shared.as_deref())?),
         kage_core::Arrangement::PerScreen => {
+            // Pela identificação estável; o nome do Windows fica de reserva para config antigo.
             let list: Vec<(usize, PathBuf)> = monitors
                 .iter()
-                .filter_map(|m| Some((m.number, path_of(config.screen_wallpaper(&m.device_name))?)))
+                .filter_map(|m| {
+                    let id = config.screen_wallpaper(&m.id).or_else(|| config.screen_wallpaper(&m.device_name));
+                    Some((m.number, path_of(id)?))
+                })
                 .collect();
             if list.is_empty() {
                 return None;
@@ -84,9 +88,21 @@ mod tests {
 
     fn monitors() -> Vec<Monitor> {
         vec![
-            Monitor { number: 1, device_name: r"\\.\DISPLAY1".into(), rect: RECT { left: 0, top: 0, right: 2560, bottom: 1440 }, primary: true },
-            Monitor { number: 2, device_name: r"\\.\DISPLAY2".into(), rect: RECT { left: -1920, top: 0, right: 0, bottom: 1080 }, primary: false },
+            Monitor { number: 1, device_name: r"\\.\DISPLAY1".into(), id: "DELA222".into(), rect: RECT { left: 0, top: 0, right: 2560, bottom: 1440 }, primary: true },
+            Monitor { number: 2, device_name: r"\\.\DISPLAY2".into(), id: "AOC2402".into(), rect: RECT { left: -1920, top: 0, right: 0, bottom: 1080 }, primary: false },
         ]
+    }
+
+    #[test]
+    fn wallpaper_follows_the_screen_after_windows_renames_it() {
+        let mut config = Config::default();
+        let a = config.add_file(&real_file("c.mp4")).unwrap().id.clone();
+        config.assign("AOC2402", Some(&a));
+        // Depois de uma troca de driver o Windows chama o mesmo monitor de \\.\DISPLAY7.
+        let mut renamed = monitors();
+        renamed[1].device_name = r"\\.\DISPLAY7".into();
+        let scene = args(&config, &renamed).unwrap();
+        assert_eq!(scene.arrangement, Arrangement::PerScreen(vec![(2, real_file("c.mp4"))]));
     }
 
     /// Um arquivo de verdade, porque a cena só usa wallpaper que existe no disco.
